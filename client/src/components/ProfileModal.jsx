@@ -1,7 +1,9 @@
 // client/src/components/ProfileModal.jsx
+import { useState } from "react";
 import Avatar from "./Avatar";
 import Stars from "./Stars";
 import { SERVICE_ICONS } from "../data/helpers";
+import { createBooking } from "../api/index";
 
 const STATIC_REVIEWS = [
   { text: "Very honest and punctual. Recommended!", from: "Karan S.", stars: 5 },
@@ -9,8 +11,46 @@ const STATIC_REVIEWS = [
   { text: "Cooking is excellent! We love her food.", from: "Priya J.", stars: 5 },
 ];
 
-const ProfileModal = ({ helper, onClose, onSave, saved }) => {
+const ProfileModal = ({ helper, onClose, onSave, saved, user, setPage, onBookingSuccess }) => {
+  const [message, setMessage] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [monthlyBudget, setMonthlyBudget] = useState("");
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [bookingError, setBookingError] = useState("");
+
   if (!helper) return null;
+
+  const helperId = String(helper.id || helper._id || "");
+  const skills = Array.isArray(helper.skills) && helper.skills.length
+    ? helper.skills
+    : [helper.service];
+
+  const canBook = user && user.role !== "helper";
+
+  const submitBooking = async () => {
+    setBookingError("");
+    setBookingLoading(true);
+    try {
+      await createBooking({
+        helperId,
+        message: message.trim(),
+        startDate: startDate || undefined,
+        monthlyBudget:
+          monthlyBudget !== "" ? Number(monthlyBudget) : helper.price,
+      });
+      setMessage("");
+      setStartDate("");
+      setMonthlyBudget("");
+      onBookingSuccess?.();
+      onClose();
+    } catch (err) {
+      setBookingError(
+        err.response?.data?.msg || "Could not send booking request."
+      );
+    } finally {
+      setBookingLoading(false);
+    }
+  };
 
   return (
     <div
@@ -209,7 +249,7 @@ const ProfileModal = ({ helper, onClose, onSave, saved }) => {
             SKILLS
           </h3>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {helper.skills.map((s) => (
+            {skills.map((s) => (
               <span key={s} className="tag tag-blue">
                 {s}
               </span>
@@ -254,6 +294,136 @@ const ProfileModal = ({ helper, onClose, onSave, saved }) => {
               <p style={{ color: "var(--text2)", fontSize: 14 }}>{r.text}</p>
             </div>
           ))}
+        </div>
+
+        {/* Book on platform */}
+        <div
+          style={{
+            marginBottom: 20,
+            padding: "16px 18px",
+            borderRadius: 12,
+            border: "1px solid var(--border)",
+            background: "rgba(255,255,255,0.03)",
+          }}
+        >
+          <h3
+            style={{
+              fontSize: 15,
+              fontWeight: 700,
+              marginBottom: 12,
+              color: "var(--text2)",
+            }}
+          >
+            REQUEST BOOKING
+          </h3>
+          {!user ? (
+            <p style={{ color: "var(--text2)", fontSize: 14, marginBottom: 12 }}>
+              Sign in to send a booking request to this helper.
+            </p>
+          ) : !canBook ? (
+            <p style={{ color: "var(--text2)", fontSize: 14 }}>
+              Booking is for households looking for help. Use a user account to
+              request a helper.
+            </p>
+          ) : (
+            <>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      color: "var(--text2)",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      marginBottom: 6,
+                    }}
+                  >
+                    Preferred start date (optional)
+                  </label>
+                  <input
+                    className="input-field"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      color: "var(--text2)",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      marginBottom: 6,
+                    }}
+                  >
+                    Monthly budget (₹)
+                  </label>
+                  <input
+                    className="input-field"
+                    type="number"
+                    min={500}
+                    placeholder={String(helper.price)}
+                    value={monthlyBudget}
+                    onChange={(e) => setMonthlyBudget(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      color: "var(--text2)",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      marginBottom: 6,
+                    }}
+                  >
+                    Message to helper
+                  </label>
+                  <textarea
+                    className="input-field"
+                    rows={3}
+                    placeholder="e.g. Need a cook for a family of 4, veg only…"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    style={{ resize: "vertical", minHeight: 72 }}
+                  />
+                </div>
+              </div>
+              {bookingError && (
+                <p style={{ color: "#ff6b6b", fontSize: 13, marginTop: 10 }}>
+                  {bookingError}
+                </p>
+              )}
+              <button
+                type="button"
+                className="btn-primary"
+                style={{
+                  width: "100%",
+                  marginTop: 14,
+                  padding: "12px",
+                  fontSize: 15,
+                }}
+                disabled={bookingLoading}
+                onClick={submitBooking}
+              >
+                {bookingLoading ? "Sending…" : "Send booking request"}
+              </button>
+            </>
+          )}
+          {!user && setPage && (
+            <button
+              type="button"
+              className="btn-outline"
+              style={{ width: "100%", marginTop: 12, padding: "10px" }}
+              onClick={() => {
+                onClose();
+                setPage("login");
+              }}
+            >
+              Sign in to book
+            </button>
+          )}
         </div>
 
         {/* CTA buttons */}

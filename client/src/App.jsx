@@ -1,172 +1,144 @@
-// client/src/App.jsx
-import { useState } from "react";
-import { HELPERS } from "./data/helpers";
-
+import { useState, useEffect } from "react";
 import Navbar        from "./components/Navbar";
 import Footer        from "./components/Footer";
 import Toast         from "./components/Toast";
 import ProfileModal  from "./components/ProfileModal";
-
 import HomePage      from "./pages/HomePage";
 import BrowsePage    from "./pages/BrowsePage";
 import AuthPage      from "./pages/AuthPage";
 import RegisterPage  from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
+import { getMe }     from "./api/index";
+
+const shapeUser = (raw) => ({
+  id: String(raw?.id || raw?._id || ""),
+  name: raw?.name,
+  email: raw?.email,
+  role: raw?.role || "user",
+});
 
 const App = () => {
   const [page, setPage]                     = useState("home");
-  const [helpers, setHelpers]               = useState(HELPERS);
   const [user, setUser]                     = useState(null);
   const [selectedHelper, setSelectedHelper] = useState(null);
   const [savedIds, setSavedIds]             = useState([]);
   const [toast, setToast]                   = useState(null);
 
-  // ── Toast helper ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    const savedUser = localStorage.getItem("user");
+    const savedToken = localStorage.getItem("token");
+    if (savedUser && savedToken) {
+      try {
+        setUser(shapeUser(JSON.parse(savedUser)));
+      } catch {
+        localStorage.removeItem("user");
+        localStorage.removeItem("token");
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    getMe()
+      .then((res) => {
+        const u = shapeUser(res.data.user);
+        setUser(u);
+        localStorage.setItem("user", JSON.stringify(u));
+      })
+      .catch((err) => {
+        if (err.response?.status === 401) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          setUser(null);
+        }
+      });
+  }, []);
+
   const showToast = (msg, type = "success") => setToast({ msg, type });
 
-  // ── Auth handlers ─────────────────────────────────────────────────────────
   const handleAuth = (userData) => {
-    setUser(userData);
+    const u = shapeUser(userData);
+    setUser(u);
+    localStorage.setItem("user", JSON.stringify(u));
     setPage("dashboard");
-    showToast(`Welcome, ${userData.name}! 🎉`);
+    if (u.role === "helper") {
+      showToast(
+        `Welcome, ${u.name}! Your helper workspace is open — add your listing or manage requests.`,
+        "success"
+      );
+    } else {
+      showToast(`Welcome, ${u.name}! 🎉`);
+    }
   };
 
-  // ── Save / unsave ─────────────────────────────────────────────────────────
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setUser(null);
+    setPage("home");
+    showToast("Logged out successfully");
+  };
+
   const handleSave = (id) => {
+    const sid = String(id);
     setSavedIds((prev) => {
-      const exists = prev.includes(id);
+      const strPrev = prev.map(String);
+      const exists = strPrev.includes(sid);
       showToast(
         exists ? "Removed from saved" : "Helper saved! ♥",
         exists ? "error" : "success"
       );
-      return exists ? prev.filter((i) => i !== id) : [...prev, id];
+      return exists
+        ? prev.filter((i) => String(i) !== sid)
+        : [...prev, sid];
     });
   };
 
-  // ── Register a new helper (optimistic local add) ──────────────────────────
-  const handleRegister = (data) => {
-    const newHelper = {
-      id:         Date.now(),
-      name:       data.name,
-      avatar:     data.name.slice(0, 2).toUpperCase(),
-      service:    data.service,
-      city:       data.city,
-      area:       data.area,
-      price:      parseInt(data.price),
-      rating:     0,
-      reviews:    0,
-      available:  true,
-      verified:   false,
-      experience: "New",
-      about:      data.about || "Newly registered helper.",
-      phone:      data.phone,
-      skills:     [data.service],
-      gradient:   "linear-gradient(135deg,#667eea,#764ba2)",
-    };
-    setHelpers((prev) => [newHelper, ...prev]);
-    showToast("Helper profile registered! 🚀");
-  };
-
-  // ── Page renderer ─────────────────────────────────────────────────────────
   const renderPage = () => {
     switch (page) {
-      case "home":
-        return (
-          <HomePage
-            setPage={setPage}
-            helpers={helpers}
-            onView={setSelectedHelper}
-            onSave={handleSave}
-            savedIds={savedIds}
-          />
-        );
-
-      case "browse":
-        return (
-          <BrowsePage
-            helpers={helpers}
-            onView={setSelectedHelper}
-            onSave={handleSave}
-            savedIds={savedIds}
-          />
-        );
-
-      case "login":
-        return (
-          <AuthPage mode="login" setPage={setPage} onAuth={handleAuth} />
-        );
-
-      case "signup":
-        return (
-          <AuthPage mode="signup" setPage={setPage} onAuth={handleAuth} />
-        );
-
-      case "register":
-        return <RegisterPage onRegister={handleRegister} />;
-
-      case "dashboard":
-        return user ? (
-          <DashboardPage
-            user={user}
-            helpers={helpers}
-            savedIds={savedIds}
-            onView={setSelectedHelper}
-            onSave={handleSave}
-          />
-        ) : (
-          <AuthPage mode="login" setPage={setPage} onAuth={handleAuth} />
-        );
-
-      default:
-        return (
-          <HomePage
-            setPage={setPage}
-            helpers={helpers}
-            onView={setSelectedHelper}
-            onSave={handleSave}
-            savedIds={savedIds}
-          />
-        );
+      case "home":      return <HomePage      setPage={setPage} onView={setSelectedHelper} onSave={handleSave} savedIds={savedIds} />;
+      case "browse":    return <BrowsePage    onView={setSelectedHelper} onSave={handleSave} savedIds={savedIds} />;
+      case "login":     return <AuthPage      mode="login"  setPage={setPage} onAuth={handleAuth} />;
+      case "signup":    return <AuthPage      mode="signup" setPage={setPage} onAuth={handleAuth} />;
+      case "register":  return <RegisterPage  />;
+      case "dashboard": return user
+        ? (
+            <DashboardPage
+              user={user}
+              savedIds={savedIds}
+              onView={setSelectedHelper}
+              onSave={handleSave}
+              setPage={setPage}
+            />
+          )
+        : <AuthPage mode="login" setPage={setPage} onAuth={handleAuth} />;
+      default:          return <HomePage      setPage={setPage} onView={setSelectedHelper} onSave={handleSave} savedIds={savedIds} />;
     }
   };
 
   return (
     <>
-      {/* Grain noise overlay */}
       <div className="noise-overlay" />
-
-      {/* Fixed top navigation */}
-      <Navbar
-        page={page}
-        setPage={setPage}
-        user={user}
-        setUser={setUser}
-      />
-
-      {/* Active page */}
+      <Navbar page={page} setPage={setPage} user={user} setUser={handleLogout} />
       {renderPage()}
-
-      {/* Footer only on home */}
       {page === "home" && <Footer setPage={setPage} />}
-
-      {/* Helper profile modal */}
       {selectedHelper && (
         <ProfileModal
           helper={selectedHelper}
           onClose={() => setSelectedHelper(null)}
           onSave={handleSave}
-          saved={savedIds.includes(selectedHelper.id)}
+          saved={savedIds.map(String).includes(
+            String(selectedHelper.id || selectedHelper._id)
+          )}
+          user={user}
+          setPage={setPage}
+          onBookingSuccess={() =>
+            showToast("Booking request sent! Check My requests in Dashboard.", "success")
+          }
         />
       )}
-
-      {/* Toast notification */}
-      {toast && (
-        <Toast
-          msg={toast.msg}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
+      {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
     </>
   );
 };

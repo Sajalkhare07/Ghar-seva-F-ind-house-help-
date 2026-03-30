@@ -8,10 +8,18 @@ const createBooking = async (req, res) => {
   try {
     const { helperId, message, startDate, monthlyBudget } = req.body;
 
+    if (!helperId) {
+      return res.status(400).json({ msg: "helperId is required" });
+    }
+
     // Verify helper exists
     const helper = await Helper.findById(helperId);
     if (!helper) {
       return res.status(404).json({ msg: "Helper not found" });
+    }
+
+    if (helper.user && String(helper.user) === String(req.user._id)) {
+      return res.status(400).json({ msg: "You cannot book your own helper profile" });
     }
 
     // Prevent duplicate pending bookings for the same helper
@@ -26,12 +34,23 @@ const createBooking = async (req, res) => {
         .json({ msg: "You already have a pending request for this helper" });
     }
 
+    const parsedStart =
+      startDate != null && startDate !== ""
+        ? new Date(startDate)
+        : undefined;
+    if (parsedStart && Number.isNaN(parsedStart.getTime())) {
+      return res.status(400).json({ msg: "Invalid startDate" });
+    }
+
     const booking = await Booking.create({
       user:          req.user._id,
       helper:        helperId,
-      message,
-      startDate,
-      monthlyBudget,
+      message:       message || "",
+      startDate:     parsedStart,
+      monthlyBudget:
+        monthlyBudget != null && monthlyBudget !== ""
+          ? Number(monthlyBudget)
+          : undefined,
     });
 
     await booking.populate(["user", "helper"]);
@@ -87,12 +106,25 @@ const updateBookingStatus = async (req, res) => {
       return res.status(400).json({ msg: "Invalid status value" });
     }
 
-    const booking = await Booking.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true }
-    );
+    const booking = await Booking.findById(req.params.id);
     if (!booking) return res.status(404).json({ msg: "Booking not found" });
+
+    const helperProfile = await Helper.findOne({
+      _id:  booking.helper,
+      user: req.user._id,
+    });
+    if (!helperProfile) {
+      return res.status(403).json({
+        msg: "You can only update bookings linked to your helper profile",
+      });
+    }
+
+    booking.status = status;
+    await booking.save();
+    await booking.populate([
+      { path: "user", select: "name email" },
+      { path: "helper", select: "name service city area price" },
+    ]);
 
     res.status(200).json({ success: true, data: booking });
   } catch (err) {

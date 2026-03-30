@@ -29,6 +29,23 @@ const getHelpers = async (req, res) => {
   }
 };
 
+// ── GET /api/helpers/me/profile ───────────────────────────────────────────────
+const getMyHelperProfile = async (req, res) => {
+  try {
+    const helper = await Helper.findOne({ user: req.user._id });
+    if (!helper) {
+      return res.status(404).json({
+        success: false,
+        msg: "No helper profile linked to this account",
+      });
+    }
+    res.status(200).json({ success: true, data: helper });
+  } catch (err) {
+    console.error("getMyHelperProfile error:", err.message);
+    res.status(500).json({ msg: "Failed to load profile", error: err.message });
+  }
+};
+
 // ── GET /api/helpers/:id ──────────────────────────────────────────────────────
 const getHelper = async (req, res) => {
   try {
@@ -96,4 +113,11 @@ const deleteHelper = async (req, res) => {
   }
 };
 
-module.exports = { getHelpers, getHelper, addHelper, updateHelper, deleteHelper };
+module.exports = {
+  getHelpers,
+  getMyHelperProfile,
+  getHelper,
+  addHelper,
+  updateHelper,
+  deleteHelper,
+};

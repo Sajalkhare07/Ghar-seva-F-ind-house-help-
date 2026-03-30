@@ -2,6 +2,22 @@
 const jwt  = require("jsonwebtoken");
 const User = require("../models/User");
 
+// ── Optional auth — sets req.user when a valid Bearer token is present ────────
+const optionalAuth = async (req, res, next) => {
+  try {
+    const header = req.headers.authorization;
+    if (header?.startsWith("Bearer ")) {
+      const token = header.split(" ")[1];
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const user = await User.findById(decoded.id).select("-password");
+      if (user) req.user = user;
+    }
+  } catch {
+    // Invalid or expired token — continue without user
+  }
+  next();
+};
+
 // ── Protect routes — must be logged in ────────────────────────────────────────
 const protect = async (req, res, next) => {
   let token;
@@ -43,4 +59,4 @@ const restrictTo = (...roles) => {
   };
 };
 
-module.exports = { protect, restrictTo };
+module.exports = { protect, restrictTo, optionalAuth };
