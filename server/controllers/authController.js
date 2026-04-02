@@ -1,42 +1,62 @@
-// server/controllers/authController.js
-const jwt  = require("jsonwebtoken");
+const jwt = require("jsonwebtoken");
 const { OAuth2Client } = require("google-auth-library");
 const User = require("../models/User");
+const Helper = require("../models/Helper");
+
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// ── Helper: sign JWT ──────────────────────────────────────────────────────────
 const signToken = (id, role) =>
   jwt.sign({ id, role }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || "7d",
   });
 
-// ── Helper: build and send token response ─────────────────────────────────────
 const sendTokenResponse = (user, statusCode, res) => {
   const token = signToken(user._id, user.role);
   res.status(statusCode).json({
     success: true,
     token,
     user: {
-      id:    user._id,
-      name:  user.name,
+      id: user._id,
+      name: user.name,
       email: user.email,
-      role:  user.role,
+      role: user.role,
+      savedHelpers: user.savedHelpers || [],
     },
   });
 };
 
-// ── POST /api/auth/signup ─────────────────────────────────────────────────────
+const isValidEmail = (email) => /\S+@\S+\.\S+/.test(email);
+
 const signup = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    let { name, email, password, role } = req.body;
 
-    // Check if user already exists
+    name = typeof name === "string" ? name.trim() : "";
+    email = typeof email === "string" ? email.trim().toLowerCase() : "";
+    password = typeof password === "string" ? password : "";
+    role = typeof role === "string" ? role : "user";
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ msg: "Name, email and password are required" });
+    }
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ msg: "Please enter a valid email address" });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ msg: "Password must be at least 6 characters" });
+    }
+
+    if (!["user", "helper"].includes(role)) {
+      return res.status(400).json({ msg: "Invalid role selected" });
+    }
+
     const existing = await User.findOne({ email });
     if (existing) {
       return res.status(400).json({ msg: "User with this email already exists" });
     }
 
-    // Create user (password is hashed inside the User model pre-save hook)
     const user = await User.create({ name, email, password, role });
 
     sendTokenResponse(user, 201, res);
@@ -46,16 +66,21 @@ const signup = async (req, res) => {
   }
 };
 
-// ── POST /api/auth/login ──────────────────────────────────────────────────────
 const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
+
+    email = typeof email === "string" ? email.trim().toLowerCase() : "";
+    password = typeof password === "string" ? password : "";
 
     if (!email || !password) {
       return res.status(400).json({ msg: "Please provide email and password" });
     }
 
-    // Explicitly select password (excluded by default in schema)
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ msg: "Please enter a valid email address" });
+    }
+
     const user = await User.findOne({ email }).select("+password");
     if (!user) {
       return res.status(401).json({ msg: "Invalid email or password" });
@@ -79,7 +104,6 @@ const login = async (req, res) => {
   }
 };
 
-// ── POST /api/auth/google ─────────────────────────────────────────────────────
 const googleAuth = async (req, res) => {
   try {
     const { credential, role } = req.body;
@@ -96,6 +120,7 @@ const googleAuth = async (req, res) => {
       idToken: credential,
       audience: process.env.GOOGLE_CLIENT_ID,
     });
+
     const payload = ticket.getPayload();
 
     if (!payload?.email || !payload.email_verified) {
@@ -109,7 +134,7 @@ const googleAuth = async (req, res) => {
       user = await User.create({
         name: payload.name || email.split("@")[0],
         email,
-        role: role || "user",
+        role: role === "helper" ? "helper" : "user",
         authProvider: "google",
         googleId: payload.sub,
       });
@@ -129,10 +154,68 @@ const googleAuth = async (req, res) => {
   }
 };
 
-// ── GET /api/auth/me ──────────────────────────────────────────────────────────
 const getMe = async (req, res) => {
-  // req.user is set by the protect middleware
   res.status(200).json({ success: true, user: req.user });
 };
 
-module.exports = { signup, login, googleAuth, getMe };
+const getSavedHelpers = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).populate("savedHelpers");
+
+    res.status(200).json({
+      success: true,
+      count: user.savedHelpers.length,
+      data: user.savedHelpers,
+    });
+  } catch (err) {
+    console.error("getSavedHelpers error:", err.message);
+    res.status(500).json({ msg: "Failed to load saved helpers", error: err.message });
+  }
+};
+
+const toggleSavedHelper = async (req, res) => {
+  try {
+    const { helperId } = req.body;
+
+    if (!helperId) {
+      return res.status(400).json({ msg: "helperId is required" });
+    }
+
+    const helper = await Helper.findById(helperId);
+    if (!helper) {
+      return res.status(404).json({ msg: "Helper not found" });
+    }
+
+    const user = await User.findById(req.user._id);
+    const exists = user.savedHelpers.some((id) => String(id) === String(helperId));
+
+    if (exists) {
+      user.savedHelpers = user.savedHelpers.filter(
+        (id) => String(id) !== String(helperId)
+      );
+    } else {
+      user.savedHelpers.push(helperId);
+    }
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      saved: !exists,
+      savedHelpers: user.savedHelpers,
+      msg: exists ? "Helper removed from saved" : "Helper saved successfully",
+    });
+  } catch (err) {
+    console.error("toggleSavedHelper error:", err.message);
+    res.status(500).json({ msg: "Failed to update saved helpers", error: err.message });
+  }
+};
+
+module.exports = {
+  signup,
+  login,
+  googleAuth,
+  getMe,
+  getSavedHelpers,
+  toggleSavedHelper,
+};

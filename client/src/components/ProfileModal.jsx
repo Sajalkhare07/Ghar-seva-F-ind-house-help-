@@ -466,7 +466,8 @@ const ProfileModal = ({ helper, onClose, onSave, saved, user, setPage, onBooking
             📞 Call Now
           </a>
           <button
-            onClick={() => onSave(helper.id)}
+            onClick={() => onSave(helper.id || helper._id)}
+
             style={{
               width: 48,
               height: 48,
