@@ -1,28 +1,27 @@
-// server/models/User.js
 const mongoose = require("mongoose");
-const bcrypt   = require("bcryptjs");
+const bcrypt = require("bcryptjs");
 
 const UserSchema = new mongoose.Schema(
   {
     name: {
-      type:     String,
+      type: String,
       required: [true, "Name is required"],
-      trim:     true,
+      trim: true,
     },
     email: {
-      type:     String,
+      type: String,
       required: [true, "Email is required"],
-      unique:   true,
+      unique: true,
       lowercase: true,
-      trim:     true,
+      trim: true,
     },
     password: {
-      type:     String,
+      type: String,
       required: function () {
         return this.authProvider !== "google";
       },
       minlength: 6,
-      select:   false, // Never return password by default
+      select: false,
     },
     authProvider: {
       type: String,
@@ -35,21 +34,20 @@ const UserSchema = new mongoose.Schema(
       sparse: true,
     },
     role: {
-      type:    String,
-      enum:    ["user", "helper"],
+      type: String,
+      enum: ["user", "helper", "admin"],
       default: "user",
     },
     savedHelpers: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref:  "Helper",
+        ref: "Helper",
       },
     ],
   },
   { timestamps: true }
 );
 
-// Hash password before saving
 UserSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   if (!this.password) return next();
@@ -58,7 +56,6 @@ UserSchema.pre("save", async function (next) {
   next();
 });
 
-// Compare plain password with hashed one
 UserSchema.methods.comparePassword = async function (plainPassword) {
   return bcrypt.compare(plainPassword, this.password);
 };

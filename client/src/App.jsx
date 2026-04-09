@@ -75,7 +75,9 @@ const App = () => {
     setPage("dashboard");
 
     if (currentUser.role === "helper") {
-      showToast(`Welcome, ${currentUser.name}! Your helper workspace is open.`, "success");
+      showToast(`Welcome, ${currentUser.name}! Complete your verification profile to go live.`, "success");
+    } else if (currentUser.role === "admin") {
+      showToast(`Welcome, ${currentUser.name}! Admin dashboard is ready.`, "success");
     } else {
       showToast(`Welcome, ${currentUser.name}!`, "success");
     }
@@ -117,10 +119,7 @@ const App = () => {
         res.data.saved ? "success" : "error"
       );
     } catch (err) {
-      showToast(
-        err.response?.data?.msg || "Could not update saved helpers",
-        "error"
-      );
+      showToast(err.response?.data?.msg || "Could not update saved helpers", "error");
     }
   };
 
@@ -128,7 +127,6 @@ const App = () => {
     switch (page) {
       case "home":
         return <HomePage setPage={setPage} />;
-
       case "browse":
         return (
           <BrowsePage
@@ -138,16 +136,12 @@ const App = () => {
             savedIds={savedIds}
           />
         );
-
       case "login":
         return <AuthPage mode="login" setPage={setPage} onAuth={handleAuth} />;
-
       case "signup":
         return <AuthPage mode="signup" setPage={setPage} onAuth={handleAuth} />;
-
       case "register":
-        return <RegisterPage />;
-
+        return <RegisterPage user={user} setPage={setPage} />;
       case "dashboard":
         return user ? (
           <DashboardPage
@@ -156,11 +150,11 @@ const App = () => {
             onView={setSelectedHelper}
             onSave={handleSave}
             setPage={setPage}
+            showToast={showToast}
           />
         ) : (
           <AuthPage mode="login" setPage={setPage} onAuth={handleAuth} />
         );
-
       default:
         return <HomePage setPage={setPage} />;
     }
@@ -169,18 +163,9 @@ const App = () => {
   return (
     <>
       <div className="noise-overlay" />
-
-      <Navbar
-        page={page}
-        setPage={setPage}
-        user={user}
-        setUser={handleLogout}
-      />
-
+      <Navbar page={page} setPage={setPage} user={user} setUser={handleLogout} />
       {renderPage()}
-
       {page === "home" && <Footer setPage={setPage} />}
-
       {selectedHelper && (
         <ProfileModal
           helper={selectedHelper}
@@ -190,21 +175,11 @@ const App = () => {
           user={user}
           setPage={setPage}
           onBookingSuccess={() =>
-            showToast(
-              "Booking request sent! Check My booking requests in Dashboard.",
-              "success"
-            )
+            showToast("Booking request sent! Check My booking requests in Dashboard.", "success")
           }
         />
       )}
-
-      {toast && (
-        <Toast
-          msg={toast.msg}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
+      {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
     </>
   );
 };

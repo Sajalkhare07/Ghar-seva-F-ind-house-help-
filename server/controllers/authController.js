@@ -27,14 +27,29 @@ const sendTokenResponse = (user, statusCode, res) => {
 
 const isValidEmail = (email) => /\S+@\S+\.\S+/.test(email);
 
+const requireAdminInviteCode = (inviteCode) => {
+  const expectedCode = process.env.ADMIN_INVITE_CODE;
+
+  if (!expectedCode) {
+    return "Admin signup is disabled. Ask the owner to seed an admin account or configure ADMIN_INVITE_CODE.";
+  }
+
+  if (!inviteCode || inviteCode !== expectedCode) {
+    return "Invalid admin invite code";
+  }
+
+  return null;
+};
+
 const signup = async (req, res) => {
   try {
-    let { name, email, password, role } = req.body;
+    let { name, email, password, role, adminInviteCode } = req.body;
 
     name = typeof name === "string" ? name.trim() : "";
     email = typeof email === "string" ? email.trim().toLowerCase() : "";
     password = typeof password === "string" ? password : "";
     role = typeof role === "string" ? role : "user";
+    adminInviteCode = typeof adminInviteCode === "string" ? adminInviteCode.trim() : "";
 
     if (!name || !email || !password) {
       return res.status(400).json({ msg: "Name, email and password are required" });
@@ -48,8 +63,15 @@ const signup = async (req, res) => {
       return res.status(400).json({ msg: "Password must be at least 6 characters" });
     }
 
-    if (!["user", "helper"].includes(role)) {
+    if (!["user", "helper", "admin"].includes(role)) {
       return res.status(400).json({ msg: "Invalid role selected" });
+    }
+
+    if (role === "admin") {
+      const inviteError = requireAdminInviteCode(adminInviteCode);
+      if (inviteError) {
+        return res.status(403).json({ msg: inviteError });
+      }
     }
 
     const existing = await User.findOne({ email });
@@ -106,7 +128,8 @@ const login = async (req, res) => {
 
 const googleAuth = async (req, res) => {
   try {
-    const { credential, role } = req.body;
+    let { credential, role, adminInviteCode } = req.body;
+    adminInviteCode = typeof adminInviteCode === "string" ? adminInviteCode.trim() : "";
 
     if (!credential) {
       return res.status(400).json({ msg: "Google credential is required" });
@@ -114,6 +137,13 @@ const googleAuth = async (req, res) => {
 
     if (!process.env.GOOGLE_CLIENT_ID) {
       return res.status(500).json({ msg: "Google auth is not configured on server" });
+    }
+
+    if (role === "admin") {
+      const inviteError = requireAdminInviteCode(adminInviteCode);
+      if (inviteError) {
+        return res.status(403).json({ msg: inviteError });
+      }
     }
 
     const ticket = await googleClient.verifyIdToken({
@@ -134,7 +164,7 @@ const googleAuth = async (req, res) => {
       user = await User.create({
         name: payload.name || email.split("@")[0],
         email,
-        role: role === "helper" ? "helper" : "user",
+        role: ["helper", "admin"].includes(role) ? role : "user",
         authProvider: "google",
         googleId: payload.sub,
       });
@@ -182,7 +212,7 @@ const toggleSavedHelper = async (req, res) => {
     }
 
     const helper = await Helper.findById(helperId);
-    if (!helper) {
+    if (!helper || helper.verificationStatus !== "approved") {
       return res.status(404).json({ msg: "Helper not found" });
     }
 

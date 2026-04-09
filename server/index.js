@@ -67,6 +67,7 @@ app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/helpers", require("./routes/helperRoutes"));
 app.use("/api/bookings", require("./routes/bookingRoutes"));
 app.use("/api/ratings", require("./routes/ratingRoutes"));
+app.use("/api/admin", require("./routes/adminRoutes"));
 
 app.get("/", (req, res) => {
   res.json({ message: "GharSeva API is running", status: "ok" });

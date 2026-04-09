@@ -3,7 +3,7 @@ Terminal 1 — Start MongoDB
 
 Terminal 2 — Start Backend
 export PATH=$PATH:"/c/Program Files/MongoDB/Server/8.2/bin"
-cd /c/Users/Sajal/Desktop/ghar-seva/server
+cd /c/Users/Sajal/Desktop/ghar-seva
 npm run dev
 
 Terminal 3 — Start Frontend
