@@ -24,6 +24,9 @@ const approvedBrowseFilter = {
   ],
 };
 
+const isValidMediaUrl = (value = "") =>
+  /^(https?:\/\/|data:image\/[a-zA-Z0-9.+-]+;base64,)/.test(value);
+
 const sanitizeDocuments = (docs) => {
   if (!Array.isArray(docs)) return undefined;
 
@@ -51,6 +54,7 @@ const sanitizeHelperPayload = (body = {}) => {
     experience:
       typeof body.experience === "string" ? body.experience.trim() : undefined,
     avatar: typeof body.avatar === "string" ? body.avatar.trim() : undefined,
+    livePhoto: typeof body.livePhoto === "string" ? body.livePhoto.trim() : undefined,
     gradient: typeof body.gradient === "string" ? body.gradient.trim() : undefined,
     dateOfBirth:
       typeof body.dateOfBirth === "string" ? body.dateOfBirth.trim() : undefined,
@@ -157,6 +161,13 @@ const validateHelperPayload = (payload, isPartial = false) => {
 
   if (payload.about !== undefined && payload.about.length > 1000) {
     return "About section must be under 1000 characters";
+  }
+
+  if (!isPartial || payload.livePhoto !== undefined) {
+    if (!payload.livePhoto) return "Live helper photo is required";
+    if (!isValidMediaUrl(payload.livePhoto)) {
+      return "Live helper photo must be a valid image upload or URL";
+    }
   }
 
   if (!isPartial || payload.dateOfBirth !== undefined) {

@@ -29,6 +29,7 @@ const initialForm = {
   currentAddress: "",
   emergencyContactName: "",
   emergencyContactPhone: "",
+  livePhoto: "",
   verificationDocuments: [
     EMPTY_DOC("Aadhaar Card"),
     EMPTY_DOC("PAN Card"),
@@ -49,6 +50,7 @@ const mapProfileToForm = (profile) => ({
   currentAddress: profile.currentAddress || "",
   emergencyContactName: profile.emergencyContactName || "",
   emergencyContactPhone: profile.emergencyContactPhone || "",
+  livePhoto: profile.livePhoto || "",
   verificationDocuments:
     profile.verificationDocuments?.length >= 3
       ? profile.verificationDocuments
@@ -108,6 +110,29 @@ const RegisterPage = ({ user, setPage }) => {
     }));
   };
 
+  const handleLivePhotoChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setError("Please upload an image file for the live helper photo.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setForm((current) => ({
+        ...current,
+        livePhoto: typeof reader.result === "string" ? reader.result : "",
+      }));
+      setError("");
+    };
+    reader.onerror = () => {
+      setError("Could not read the selected photo. Please try another image.");
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handle = async () => {
     if (!isEligible) {
       setError("Login with a helper or admin account before submitting a helper profile.");
@@ -127,6 +152,11 @@ const RegisterPage = ({ user, setPage }) => {
 
     if (requiredFields.some((value) => !String(value).trim())) {
       setError("Please fill all required fields");
+      return;
+    }
+
+    if (!form.livePhoto.trim()) {
+      setError("Please upload a live photo of the helper.");
       return;
     }
 
@@ -207,10 +237,13 @@ const RegisterPage = ({ user, setPage }) => {
             <div style={{ color: "#64748b", fontSize: 13, marginBottom: 6 }}>Submitted Details</div>
             <div style={{ fontWeight: 700, fontSize: 16, color: "#0f172a" }}>{form.name}</div>
             <div style={{ color: "#64748b", fontSize: 14, marginTop: 4 }}>
-              {form.service} · {form.city} · Rs.{form.price}/month
+              {form.service}  -  {form.city}  -  Rs.{form.price}/month
             </div>
             <div style={{ color: "#64748b", fontSize: 14, marginTop: 8 }}>
               Documents uploaded: {completedDocs}
+            </div>
+            <div style={{ color: "#64748b", fontSize: 14, marginTop: 8 }}>
+              Live photo: {form.livePhoto ? "Uploaded" : "Missing"}
             </div>
           </div>
           <button className="btn-primary" style={{ marginTop: 20 }} onClick={() => setPage("dashboard")}>
@@ -308,6 +341,36 @@ const RegisterPage = ({ user, setPage }) => {
           <div style={{ marginBottom: 28 }}>
             <label style={{ display: "block", color: "#475569", fontSize: 13, fontWeight: 600, marginBottom: 6 }}>About Yourself</label>
             <textarea className="input-field" rows={4} placeholder="Tell families about your experience and the kind of work you do." value={form.about} onChange={(e) => setForm((current) => ({ ...current, about: e.target.value }))} style={{ resize: "vertical", minHeight: 100 }} />
+          </div>
+
+          <div style={{ border: "1px solid #dbeafe", background: "#f8fbff", borderRadius: 18, padding: 22, marginBottom: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap", alignItems: "flex-start", marginBottom: 16 }}>
+              <div>
+                <h3 style={{ fontFamily: "Syne, sans-serif", fontSize: 20, fontWeight: 800, marginBottom: 6, color: "#0f172a" }}>
+                  Live helper photo
+                </h3>
+                <p style={{ color: "#64748b", fontSize: 14, lineHeight: 1.6 }}>
+                  Upload a clear real-time photo. This image will appear on the helper card after admin approval.
+                </p>
+              </div>
+              {form.livePhoto && (
+                <img
+                  src={form.livePhoto}
+                  alt="Live helper preview"
+                  style={{ width: 110, height: 110, objectFit: "cover", borderRadius: 18, border: "1px solid #bfdbfe" }}
+                />
+              )}
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: "block", color: "#475569", fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Upload Photo *</label>
+              <input
+                className="input-field"
+                type="file"
+                accept="image/*"
+                onChange={handleLivePhotoChange}
+                style={{ padding: "12px" }}
+              />
+            </div>
           </div>
 
           <div style={{ border: "1px solid #dbeafe", background: "#f8fbff", borderRadius: 18, padding: 22, marginBottom: 24 }}>

@@ -57,7 +57,7 @@ const HelperCard = ({ helper, onView, onSave, saved, user }) => {
         />
 
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Avatar initials={helper.avatar} gradient={helper.gradient} />
+          <Avatar initials={helper.avatar} gradient={helper.gradient} imageUrl={helper.livePhoto} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
               <span
@@ -77,7 +77,7 @@ const HelperCard = ({ helper, onView, onSave, saved, user }) => {
               <span className="tag tag-blue" style={{ fontSize: 11 }}>
                 {SERVICE_ICONS[helper.service]} {helper.service}
               </span>
-              <span style={{ color: "#64748b", fontSize: 12 }}>📍 {helper.city}</span>
+              <span style={{ color: "#64748b", fontSize: 12 }}>{helper.city}</span>
             </div>
           </div>
         </div>
@@ -169,7 +169,7 @@ const HelperCard = ({ helper, onView, onSave, saved, user }) => {
                 e.currentTarget.style.border = "1.5px solid #fde68a";
               }}
             >
-              ★ Rate
+              Rate
             </button>
           ) : (
             <button
@@ -190,7 +190,7 @@ const HelperCard = ({ helper, onView, onSave, saved, user }) => {
                 whiteSpace: "nowrap",
               }}
             >
-              ★ Rate
+              Rate
             </button>
           )}
 
@@ -220,7 +220,7 @@ const HelperCard = ({ helper, onView, onSave, saved, user }) => {
               e.currentTarget.style.color = saved ? "#7c3aed" : "#94a3b8";
             }}
           >
-            {saved ? "♥" : "♡"}
+            {saved ? "<3" : "+"}
           </button>
         </div>
       </div>

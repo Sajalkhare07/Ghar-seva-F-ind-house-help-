@@ -1,4 +1,5 @@
 const Helper = require("../models/Helper");
+const Booking = require("../models/Booking");
 const User = require("../models/User");
 
 const getOverview = async (req, res) => {
@@ -39,10 +40,38 @@ const reviewHelper = async (req, res) => {
       return res.status(400).json({ msg: "Invalid review status" });
     }
 
+    const trimmedNotes = typeof approvalNotes === "string" ? approvalNotes.trim() : "";
+
+    if (status === "rejected") {
+      const helper = await Helper.findById(req.params.id).populate("user", "name email role");
+
+      if (!helper) {
+        return res.status(404).json({ msg: "Helper not found" });
+      }
+
+      await Promise.all([
+        Booking.deleteMany({ helper: helper._id }),
+        User.updateMany({ savedHelpers: helper._id }, { $pull: { savedHelpers: helper._id } }),
+        Helper.findByIdAndDelete(helper._id),
+      ]);
+
+      return res.status(200).json({
+        success: true,
+        removedId: String(helper._id),
+        data: {
+          _id: helper._id,
+          name: helper.name,
+          user: helper.user,
+          approvalNotes: trimmedNotes,
+        },
+        msg: "Helper rejected and removed successfully",
+      });
+    }
+
     const updates = {
       verificationStatus: status,
       verified: status === "approved",
-      approvalNotes: typeof approvalNotes === "string" ? approvalNotes.trim() : "",
+      approvalNotes: trimmedNotes,
       approvedAt: status === "approved" ? new Date() : null,
       approvedBy: status === "approved" ? req.user._id : null,
     };
@@ -60,12 +89,7 @@ const reviewHelper = async (req, res) => {
     res.status(200).json({
       success: true,
       data: helper,
-      msg:
-        status === "approved"
-          ? "Helper approved successfully"
-          : status === "rejected"
-            ? "Helper rejected successfully"
-            : "Helper moved back to pending review",
+      msg: status === "approved" ? "Helper approved successfully" : "Helper moved back to pending review",
     });
   } catch (err) {
     console.error("reviewHelper error:", err.message);

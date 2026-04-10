@@ -1,6 +1,6 @@
 // client/src/components/Avatar.jsx
 
-const Avatar = ({ initials, gradient, size = 48 }) => (
+const Avatar = ({ initials, gradient, imageUrl, size = 48 }) => (
   <div
     style={{
       width: size,
@@ -16,9 +16,18 @@ const Avatar = ({ initials, gradient, size = 48 }) => (
       color: "#fff",
       flexShrink: 0,
       boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
+      overflow: "hidden",
     }}
   >
-    {initials}
+    {imageUrl ? (
+      <img
+        src={imageUrl}
+        alt={initials || "Helper"}
+        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+      />
+    ) : (
+      initials
+    )}
   </div>
 );
 

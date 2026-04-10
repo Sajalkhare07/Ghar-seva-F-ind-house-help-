@@ -201,10 +201,22 @@ const HelperDashboardPage = ({ user, setPage, showToast }) => {
                 <h3 style={{ fontWeight: 800, marginBottom: 16, fontSize: 17 }}>Your approval-ready listing</h3>
                 <div style={{ display: "grid", gap: 10, fontSize: 15, color: "var(--text)" }}>
                   <div><span style={{ color: "var(--text2)", fontSize: 13 }}>Name</span><div style={{ fontWeight: 700 }}>{profile.name}</div></div>
-                  <div><span style={{ color: "var(--text2)", fontSize: 13 }}>Service and city</span><div>{profile.service} · {profile.area}, {profile.city}</div></div>
+                  <div><span style={{ color: "var(--text2)", fontSize: 13 }}>Service and city</span><div>{profile.service}  -  {profile.area}, {profile.city}</div></div>
                   <div><span style={{ color: "var(--text2)", fontSize: 13 }}>Monthly rate</span><div style={{ fontWeight: 700 }}>Rs.{Number(profile.price).toLocaleString()}/mo</div></div>
                   <div><span style={{ color: "var(--text2)", fontSize: 13 }}>Phone</span><div>{profile.phone}</div></div>
                   <div><span style={{ color: "var(--text2)", fontSize: 13 }}>Verification status</span><div style={{ color: verification.color, fontWeight: 700 }}>{verification.label}</div></div>
+                  {profile.livePhoto && (
+                    <div>
+                      <span style={{ color: "var(--text2)", fontSize: 13 }}>Live photo</span>
+                      <div style={{ marginTop: 8 }}>
+                        <img
+                          src={profile.livePhoto}
+                          alt={profile.name}
+                          style={{ width: 120, height: 120, objectFit: "cover", borderRadius: 16, border: "1px solid rgba(148,163,184,0.2)" }}
+                        />
+                      </div>
+                    </div>
+                  )}
                   {profile.about && <div><span style={{ color: "var(--text2)", fontSize: 13 }}>About</span><p style={{ lineHeight: 1.6, marginTop: 4 }}>{profile.about}</p></div>}
                 </div>
                 <div style={{ marginTop: 20 }}>
@@ -263,7 +275,7 @@ const HelperDashboardPage = ({ user, setPage, showToast }) => {
                         </div>
                         {booking.message && <p style={{ marginTop: 12, fontSize: 14, color: "var(--text)", lineHeight: 1.5 }}>{booking.message}</p>}
                         <div style={{ marginTop: 10, fontSize: 13, color: "var(--text2)" }}>
-                          {booking.startDate && `Start: ${new Date(booking.startDate).toLocaleDateString()} · `}
+                          {booking.startDate && `Start: ${new Date(booking.startDate).toLocaleDateString()}  -  `}
                           {booking.monthlyBudget != null && `Budget: Rs.${Number(booking.monthlyBudget).toLocaleString()}/mo`}
                         </div>
                         {booking.status === "pending" && (

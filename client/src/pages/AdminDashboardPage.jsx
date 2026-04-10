@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { getAdminOverview, reviewHelperProfile } from "../api/index";
+import Avatar from "../components/Avatar";
 
 const statusTone = {
   pending: { bg: "rgba(245,158,11,0.14)", color: "#b45309" },
@@ -46,11 +47,32 @@ const AdminDashboardPage = ({ user, showToast }) => {
   const handleReview = async (helperId, status) => {
     setBusyId(helperId);
     try {
-      await reviewHelperProfile(helperId, {
+      const res = await reviewHelperProfile(helperId, {
         status,
         approvalNotes: notes[helperId] || "",
       });
-      await loadOverview();
+
+      if (status === "rejected") {
+        const removedId = res.data?.removedId || helperId;
+        setOverview((current) => {
+          if (!current) return current;
+          const nextHelpers = (current.helpers || []).filter((helper) => helper._id !== removedId);
+          return {
+            ...current,
+            helpers: nextHelpers,
+            counts: {
+              ...current.counts,
+              totalHelpers: nextHelpers.length,
+              pendingHelpers: nextHelpers.filter((helper) => helper.verificationStatus === "pending").length,
+              approvedHelpers: nextHelpers.filter((helper) => helper.verificationStatus === "approved").length,
+              rejectedHelpers: nextHelpers.filter((helper) => helper.verificationStatus === "rejected").length,
+            },
+          };
+        });
+      } else {
+        await loadOverview();
+      }
+
       if (showToast) showToast(`Helper ${status} successfully.`, "success");
     } catch (err) {
       if (showToast) showToast(err.response?.data?.msg || "Review action failed.", "error");
@@ -152,31 +174,44 @@ const AdminDashboardPage = ({ user, showToast }) => {
               return (
                 <div key={helper._id} className="glass" style={{ borderRadius: 18, padding: 22, background: "#fff", border: "1px solid #e2e8f0" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 18, flexWrap: "wrap", marginBottom: 16 }}>
-                    <div>
-                      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                        <h2 style={{ fontFamily: "Syne, sans-serif", fontWeight: 800, fontSize: 22, margin: 0 }}>{helper.name}</h2>
-                        <span style={{ padding: "6px 12px", borderRadius: 999, background: tone.bg, color: tone.color, fontWeight: 700, fontSize: 12, textTransform: "capitalize" }}>
-                          {helper.verificationStatus}
-                        </span>
+                    <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                      <Avatar initials={helper.avatar} gradient={helper.gradient} imageUrl={helper.livePhoto} size={62} />
+                      <div>
+                        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                          <h2 style={{ fontFamily: "Syne, sans-serif", fontWeight: 800, fontSize: 22, margin: 0 }}>{helper.name}</h2>
+                          <span style={{ padding: "6px 12px", borderRadius: 999, background: tone.bg, color: tone.color, fontWeight: 700, fontSize: 12, textTransform: "capitalize" }}>
+                            {helper.verificationStatus}
+                          </span>
+                        </div>
+                        <p style={{ color: "#64748b", marginTop: 8, lineHeight: 1.7 }}>
+                          {helper.service} / {helper.area}, {helper.city} / Rs.{Number(helper.price).toLocaleString()}/month
+                        </p>
+                        <p style={{ color: "#64748b", fontSize: 14, marginTop: 4 }}>
+                          Account: {helper.user?.name || "Unknown"} / {helper.user?.email || "No email"}
+                        </p>
                       </div>
-                      <p style={{ color: "#64748b", marginTop: 8, lineHeight: 1.7 }}>
-                        {helper.service} · {helper.area}, {helper.city} · Rs.{Number(helper.price).toLocaleString()}/month
-                      </p>
-                      <p style={{ color: "#64748b", fontSize: 14, marginTop: 4 }}>
-                        Account: {helper.user?.name || "Unknown"} · {helper.user?.email || "No email"}
-                      </p>
                     </div>
                     <div style={{ minWidth: 240 }}>
                       <div style={{ color: "#64748b", fontSize: 13, marginBottom: 6 }}>Quick legitimacy view</div>
                       <div style={{ color: "#0f172a", fontSize: 14, lineHeight: 1.7 }}>
                         DOB: {helper.dateOfBirth}<br />
                         Phone: {helper.phone}<br />
-                        Emergency: {helper.emergencyContactName} · {helper.emergencyContactPhone}
+                        Emergency: {helper.emergencyContactName} / {helper.emergencyContactPhone}
                       </div>
                     </div>
                   </div>
 
                   <div style={{ marginBottom: 16 }}>
+                    {helper.livePhoto && (
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={{ color: "#64748b", fontSize: 13, marginBottom: 10 }}>Live helper photo</div>
+                        <img
+                          src={helper.livePhoto}
+                          alt={helper.name}
+                          style={{ width: 132, height: 132, objectFit: "cover", borderRadius: 16, border: "1px solid #e2e8f0" }}
+                        />
+                      </div>
+                    )}
                     <div style={{ color: "#64748b", fontSize: 13, marginBottom: 10 }}>Uploaded documents</div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
                       {(helper.verificationDocuments || []).map((doc) => (

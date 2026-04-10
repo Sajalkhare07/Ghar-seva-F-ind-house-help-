@@ -75,6 +75,11 @@ const HelperSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    livePhoto: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     gradient: {
       type: String,
       default: "linear-gradient(135deg,#667eea,#764ba2)",
