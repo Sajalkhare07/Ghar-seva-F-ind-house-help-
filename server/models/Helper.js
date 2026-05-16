@@ -17,6 +17,16 @@ const HelperDocumentSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    fileName: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    mimeType: {
+      type: String,
+      default: "application/pdf",
+      trim: true,
+    },
   },
   { _id: false }
 );

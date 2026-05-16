@@ -140,6 +140,8 @@ const App = () => {
         return <AuthPage mode="login" setPage={setPage} onAuth={handleAuth} />;
       case "signup":
         return <AuthPage mode="signup" setPage={setPage} onAuth={handleAuth} />;
+      case "admin":
+        return <AuthPage mode="admin" setPage={setPage} onAuth={handleAuth} />;
       case "register":
         return <RegisterPage user={user} setPage={setPage} />;
       case "dashboard":

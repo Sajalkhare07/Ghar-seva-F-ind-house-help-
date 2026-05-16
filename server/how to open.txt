@@ -1,11 +1,11 @@
-Terminal 1 — Start MongoDB
-"/c/Program Files/MongoDB/Server/8.2/bin/mongod.exe" --dbpath "/c/data/db"
 
-Terminal 2 — Start Backend
-export PATH=$PATH:"/c/Program Files/MongoDB/Server/8.2/bin"
-cd /c/Users/Sajal/Desktop/ghar-seva
+
+# terminal 1
+cd Desktop/projects/ghar-seva/server
+npm install
 npm run dev
 
-Terminal 3 — Start Frontend
-cd /c/Users/Sajal/Desktop/ghar-seva/client
+# terminal 2
+cd "/mnt/c/Users/Sajal/Desktop/projects/ghar-seva/client"
+npm install
 npm run dev

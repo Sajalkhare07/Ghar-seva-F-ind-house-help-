@@ -1,22 +1,49 @@
 import { useEffect, useMemo, useState } from "react";
 import Avatar from "../components/Avatar";
 import { getMyHelperProfile, getHelperRequests, updateBookingStatus } from "../api/index";
+import { openPdfDocument } from "../utils/document";
 
 const statusStyle = (status) => {
   const map = {
-    pending: { bg: "rgba(234,179,8,0.15)", color: "#ca8a04", label: "Pending" },
-    accepted: { bg: "rgba(34,197,94,0.15)", color: "#16a34a", label: "Accepted" },
-    rejected: { bg: "rgba(239,68,68,0.12)", color: "#dc2626", label: "Rejected" },
-    completed: { bg: "rgba(59,130,246,0.12)", color: "#2563eb", label: "Completed" },
+    pending: { bg: "rgba(199,146,62,0.16)", color: "#9a6d1d", label: "Pending" },
+    accepted: { bg: "rgba(80,115,95,0.14)", color: "#3f6552", label: "Accepted" },
+    rejected: { bg: "rgba(182,84,69,0.14)", color: "#9f4336", label: "Rejected" },
+    completed: { bg: "rgba(48,78,87,0.14)", color: "#2f515b", label: "Completed" },
   };
   return map[status] || map.pending;
 };
 
 const verificationStyles = {
-  pending: { bg: "rgba(245,158,11,0.12)", color: "#b45309", label: "Pending admin review" },
-  approved: { bg: "rgba(34,197,94,0.12)", color: "#15803d", label: "Approved and live" },
-  rejected: { bg: "rgba(239,68,68,0.12)", color: "#b91c1c", label: "Changes requested" },
+  pending: { bg: "rgba(199,146,62,0.16)", color: "#9a6d1d", label: "Pending admin review" },
+  approved: { bg: "rgba(80,115,95,0.14)", color: "#3f6552", label: "Approved and live" },
+  rejected: { bg: "rgba(182,84,69,0.14)", color: "#9f4336", label: "Changes requested" },
 };
+
+const panelStyle = {
+  borderRadius: 26,
+  border: "1px solid rgba(74,101,114,0.18)",
+  background: "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(243,247,249,0.96))",
+  boxShadow: "0 20px 50px rgba(61,37,23,0.08)",
+};
+
+const statTile = {
+  padding: "16px 18px",
+  borderRadius: 20,
+  background: "rgba(255,255,255,0.9)",
+  border: "1px solid rgba(221,206,185,0.8)",
+};
+
+const tabButton = (active) => ({
+  padding: "10px 18px",
+  borderRadius: 999,
+  border: "1px solid transparent",
+  cursor: "pointer",
+  background: active ? "rgba(27,156,133,0.14)" : "transparent",
+  color: active ? "var(--brand-dark)" : "var(--text2)",
+  fontWeight: 800,
+  fontSize: 13,
+  letterSpacing: "0.02em",
+});
 
 const HelperDashboardPage = ({ user, setPage, showToast }) => {
   const [tab, setTab] = useState("incoming");
@@ -83,9 +110,9 @@ const HelperDashboardPage = ({ user, setPage, showToast }) => {
     try {
       await updateBookingStatus(bookingId, status);
       await loadIncoming();
-      if (showToast) showToast(`Booking marked ${status}.`, "success");
+      showToast?.(`Booking marked ${status}.`, "success");
     } catch (err) {
-      if (showToast) showToast(err.response?.data?.msg || "Could not update booking.", "error");
+      showToast?.(err.response?.data?.msg || "Could not update booking.", "error");
     } finally {
       setActionId(null);
     }
@@ -99,48 +126,46 @@ const HelperDashboardPage = ({ user, setPage, showToast }) => {
   };
 
   return (
-    <div className="page-content" style={{ paddingTop: 80, minHeight: "100vh" }}>
-      <div style={{ maxWidth: 1040, margin: "0 auto", padding: "40px 24px" }}>
-        <div className="glass" style={{ borderRadius: 20, padding: 28, marginBottom: 24, border: "1px solid rgba(59,130,246,0.22)", background: "linear-gradient(145deg, rgba(102,126,234,0.08), rgba(37,99,235,0.04))" }}>
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 20, flexWrap: "wrap" }}>
-            <Avatar initials={user.name.slice(0, 2).toUpperCase()} size={64} />
-            <div style={{ flex: 1, minWidth: 240 }}>
-              <div style={{ display: "inline-block", marginBottom: 8, padding: "4px 12px", borderRadius: 50, fontSize: 12, fontWeight: 700, background: "rgba(59,130,246,0.16)", color: "#1d4ed8" }}>
-                Helper workspace
+    <div className="page-content" style={{ paddingTop: 88, minHeight: "100vh" }}>
+      <div style={{ maxWidth: 1140, margin: "0 auto", padding: "28px 24px 70px" }}>
+        <div style={{ ...panelStyle, padding: 30, marginBottom: 22 }}>
+          <div style={{ display: "flex", gap: 18, alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap", flex: 1 }}>
+              <Avatar initials={user.name.slice(0, 2).toUpperCase()} imageUrl={profile?.livePhoto} size={72} />
+              <div>
+                <div className="tag tag-blue" style={{ marginBottom: 10 }}>Helper workspace</div>
+                <h1 style={{ fontSize: "clamp(30px, 4vw, 48px)", lineHeight: 1.03, marginBottom: 8 }}>
+                  Welcome back, {user.name}
+                </h1>
+                <p style={{ color: "var(--text2)", lineHeight: 1.75, fontSize: 15, maxWidth: 700 }}>
+                  Manage your listing, keep an eye on approval progress, and respond to incoming household requests once your profile is live.
+                </p>
+                <p style={{ color: "var(--text3)", fontSize: 13, marginTop: 8 }}>{user.email}</p>
               </div>
-              <h1 style={{ fontFamily: "Syne", fontWeight: 800, fontSize: 26, marginBottom: 8 }}>
-                Welcome back, {user.name}
-              </h1>
-              <p style={{ color: "var(--text2)", lineHeight: 1.6, fontSize: 15 }}>
-                Keep your profile complete, track your approval status, and manage incoming work requests after the admin clears your listing.
-              </p>
-              <p style={{ color: "var(--text3)", fontSize: 13, marginTop: 8 }}>{user.email}</p>
+            </div>
+
+            <div style={{ display: "grid", gap: 10, minWidth: 220 }}>
+              <span style={{ width: "fit-content", padding: "8px 13px", borderRadius: 999, background: verification.bg, color: verification.color, fontWeight: 800, fontSize: 12 }}>
+                {verification.label}
+              </span>
+              {profile?.approvalNotes && (
+                <div style={{ color: "var(--text2)", fontSize: 13, maxWidth: 280, lineHeight: 1.6 }}>
+                  Admin note: {profile.approvalNotes}
+                </div>
+              )}
             </div>
           </div>
 
-          {profile && (
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 20 }}>
-              <span style={{ padding: "8px 14px", borderRadius: 999, background: verification.bg, color: verification.color, fontWeight: 700, fontSize: 13 }}>
-                {verification.label}
-              </span>
-              {profile.approvalNotes && (
-                <span style={{ padding: "8px 14px", borderRadius: 999, background: "rgba(148,163,184,0.14)", color: "#475569", fontWeight: 600, fontSize: 13 }}>
-                  Admin note: {profile.approvalNotes}
-                </span>
-              )}
-            </div>
-          )}
-
           {!profileLoading && profile && (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginTop: 22 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginTop: 22 }}>
               {[
-                ["Pending jobs", stats.pending],
-                ["Active jobs", stats.active],
-                ["Completed", stats.done],
-              ].map(([label, value]) => (
-                <div key={label} className="glass" style={{ borderRadius: 12, padding: "14px 16px", textAlign: "center" }}>
-                  <div style={{ fontFamily: "Syne", fontWeight: 800, fontSize: 22, color: "var(--blue)" }}>{value}</div>
-                  <div style={{ color: "var(--text2)", fontSize: 12 }}>{label}</div>
+                ["Pending jobs", stats.pending, "var(--gold)"],
+                ["Active jobs", stats.active, "var(--green)"],
+                ["Completed", stats.done, "var(--accent)"],
+              ].map(([label, value, tone]) => (
+                <div key={label} style={statTile}>
+                  <div style={{ color: "var(--text3)", fontSize: 12, marginBottom: 6 }}>{label}</div>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: 34, color: tone }}>{value}</div>
                 </div>
               ))}
             </div>
@@ -148,96 +173,93 @@ const HelperDashboardPage = ({ user, setPage, showToast }) => {
         </div>
 
         {!profileLoading && profileError === "no_profile" && (
-          <div className="glass" style={{ borderRadius: 16, padding: "28px 24px", marginBottom: 24, border: "1px dashed var(--border)" }}>
-            <h2 style={{ fontWeight: 800, fontSize: 18, marginBottom: 12 }}>Next step: submit your helper verification profile</h2>
-            <p style={{ color: "var(--text2)", lineHeight: 1.8, fontSize: 14, marginBottom: 20 }}>
-              Add your work details, Aadhaar, and supporting documents. Your listing stays hidden until an admin approves it.
+          <div style={{ ...panelStyle, padding: 28, marginBottom: 22 }}>
+            <div className="tag tag-orange" style={{ marginBottom: 14 }}>Verification needed</div>
+            <h2 style={{ fontSize: 30, marginBottom: 10 }}>Complete your helper profile first</h2>
+            <p style={{ color: "var(--text2)", lineHeight: 1.8, fontSize: 15, maxWidth: 640, marginBottom: 18 }}>
+              Add your work details, Aadhaar, live photo, and supporting documents. Your listing stays hidden until an admin approves it.
             </p>
-            <button type="button" className="btn-primary" style={{ padding: "12px 24px" }} onClick={() => setPage("register")}>
+            <button type="button" className="btn-primary" onClick={() => setPage("register")}>
               Complete my verification profile
             </button>
           </div>
         )}
 
-        {profileLoading && <p style={{ color: "var(--text2)", marginBottom: 24 }}>Loading your workspace...</p>}
+        {profileLoading && <div style={{ ...panelStyle, padding: 24, marginBottom: 22, color: "var(--text2)" }}>Loading your workspace...</div>}
 
         {profileError === "load_failed" && !profileLoading && (
-          <div className="glass" style={{ borderRadius: 12, padding: 20, marginBottom: 24, color: "var(--text2)" }}>
-            Could not load your profile. <button type="button" onClick={refreshAll} style={{ background: "none", border: "none", color: "var(--blue)", cursor: "pointer", fontWeight: 600 }}>Retry</button>
+          <div style={{ ...panelStyle, padding: 22, marginBottom: 22, color: "var(--text2)" }}>
+            Could not load your profile. <button type="button" onClick={refreshAll} style={{ background: "none", border: "none", color: "var(--brand-dark)", cursor: "pointer", fontWeight: 800 }}>Retry</button>
           </div>
         )}
 
         {profile && (
           <>
-            <div style={{ display: "flex", gap: 4, background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: 4, marginBottom: 24, flexWrap: "wrap", width: "fit-content" }}>
+            <div style={{ display: "inline-flex", gap: 6, padding: 6, borderRadius: 999, border: "1px solid rgba(74,101,114,0.18)", background: "rgba(255,250,244,0.78)", marginBottom: 22, flexWrap: "wrap" }}>
               {[
                 ["incoming", "Incoming requests"],
                 ["listing", "My profile"],
                 ["documents", "Verification docs"],
               ].map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setTab(value)}
-                  style={{
-                    padding: "8px 16px",
-                    borderRadius: 9,
-                    border: "none",
-                    cursor: "pointer",
-                    background: tab === value ? "rgba(59,130,246,0.18)" : "transparent",
-                    color: tab === value ? "var(--blue)" : "var(--text2)",
-                    fontFamily: "DM Sans",
-                    fontWeight: 600,
-                    fontSize: 14,
-                  }}
-                >
+                <button key={value} type="button" onClick={() => setTab(value)} style={tabButton(tab === value)}>
                   {label}
                 </button>
               ))}
             </div>
 
             {tab === "listing" && (
-              <div className="glass" style={{ borderRadius: 16, padding: "24px 22px" }}>
-                <h3 style={{ fontWeight: 800, marginBottom: 16, fontSize: 17 }}>Your approval-ready listing</h3>
-                <div style={{ display: "grid", gap: 10, fontSize: 15, color: "var(--text)" }}>
-                  <div><span style={{ color: "var(--text2)", fontSize: 13 }}>Name</span><div style={{ fontWeight: 700 }}>{profile.name}</div></div>
-                  <div><span style={{ color: "var(--text2)", fontSize: 13 }}>Service and city</span><div>{profile.service}  -  {profile.area}, {profile.city}</div></div>
-                  <div><span style={{ color: "var(--text2)", fontSize: 13 }}>Monthly rate</span><div style={{ fontWeight: 700 }}>Rs.{Number(profile.price).toLocaleString()}/mo</div></div>
-                  <div><span style={{ color: "var(--text2)", fontSize: 13 }}>Phone</span><div>{profile.phone}</div></div>
-                  <div><span style={{ color: "var(--text2)", fontSize: 13 }}>Verification status</span><div style={{ color: verification.color, fontWeight: 700 }}>{verification.label}</div></div>
-                  {profile.livePhoto && (
-                    <div>
-                      <span style={{ color: "var(--text2)", fontSize: 13 }}>Live photo</span>
-                      <div style={{ marginTop: 8 }}>
-                        <img
-                          src={profile.livePhoto}
-                          alt={profile.name}
-                          style={{ width: 120, height: 120, objectFit: "cover", borderRadius: 16, border: "1px solid rgba(148,163,184,0.2)" }}
-                        />
-                      </div>
+              <div style={{ ...panelStyle, padding: 24 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(240px, 0.42fr)", gap: 18 }}>
+                  <div>
+                    <div className="tag tag-purple" style={{ marginBottom: 12 }}>Approval ready profile</div>
+                    <h3 style={{ fontSize: 30, marginBottom: 14 }}>{profile.name}</h3>
+                    <div style={{ display: "grid", gap: 12, fontSize: 15, color: "var(--text)" }}>
+                      <div><span style={{ color: "var(--text3)", fontSize: 12 }}>Service and city</span><div>{profile.service} in {profile.area}, {profile.city}</div></div>
+                      <div><span style={{ color: "var(--text3)", fontSize: 12 }}>Monthly rate</span><div style={{ fontWeight: 800 }}>Rs.{Number(profile.price).toLocaleString()}/mo</div></div>
+                      <div><span style={{ color: "var(--text3)", fontSize: 12 }}>Phone</span><div>{profile.phone}</div></div>
+                      <div><span style={{ color: "var(--text3)", fontSize: 12 }}>Verification status</span><div style={{ color: verification.color, fontWeight: 800 }}>{verification.label}</div></div>
+                      {profile.about && <div><span style={{ color: "var(--text3)", fontSize: 12 }}>About</span><p style={{ lineHeight: 1.7, marginTop: 4 }}>{profile.about}</p></div>}
                     </div>
-                  )}
-                  {profile.about && <div><span style={{ color: "var(--text2)", fontSize: 13 }}>About</span><p style={{ lineHeight: 1.6, marginTop: 4 }}>{profile.about}</p></div>}
-                </div>
-                <div style={{ marginTop: 20 }}>
-                  <button type="button" className="btn-outline" onClick={() => setPage("register")}>Submit a revised profile</button>
+                    <button type="button" className="btn-outline" style={{ marginTop: 18 }} onClick={() => setPage("register")}>Submit a revised profile</button>
+                  </div>
+                  <div style={{ ...statTile, alignSelf: "start" }}>
+                    <div style={{ color: "var(--text3)", fontSize: 12, marginBottom: 8 }}>Live photo</div>
+                    {profile.livePhoto ? (
+                      <img src={profile.livePhoto} alt={profile.name} style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", borderRadius: 22, border: "1px solid rgba(74,101,114,0.16)" }} />
+                    ) : (
+                      <div style={{ borderRadius: 22, aspectRatio: "1 / 1", display: "grid", placeItems: "center", background: "var(--surface-soft)", color: "var(--text3)" }}>No live photo</div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
 
             {tab === "documents" && (
-              <div className="glass" style={{ borderRadius: 16, padding: "24px 22px" }}>
-                <h3 style={{ fontWeight: 800, marginBottom: 16, fontSize: 17 }}>Documents under review</h3>
+              <div style={{ ...panelStyle, padding: 24 }}>
+                <div className="tag tag-blue" style={{ marginBottom: 12 }}>Documents under review</div>
+                <h3 style={{ fontSize: 30, marginBottom: 16 }}>Verification documents</h3>
                 <div style={{ display: "grid", gap: 12 }}>
                   {(profile.verificationDocuments || []).map((doc) => (
-                    <div key={`${doc.type}-${doc.documentNumber}`} style={{ display: "flex", justifyContent: "space-between", gap: 14, flexWrap: "wrap", border: "1px solid rgba(148,163,184,0.2)", borderRadius: 14, padding: 16 }}>
+                    <div key={`${doc.type}-${doc.documentNumber}`} style={{ display: "flex", justifyContent: "space-between", gap: 14, flexWrap: "wrap", border: "1px solid rgba(74,101,114,0.16)", borderRadius: 20, padding: 18, background: "rgba(255,255,255,0.92)" }}>
                       <div>
-                        <div style={{ fontWeight: 700 }}>{doc.type}</div>
-                        <div style={{ color: "var(--text2)", fontSize: 13, marginTop: 4 }}>{doc.documentNumber}</div>
+                        <div style={{ fontWeight: 800, color: "var(--text)" }}>{doc.type}</div>
+                        <div style={{ color: "var(--text2)", fontSize: 13, marginTop: 5 }}>{doc.documentNumber}</div>
+                        <div style={{ color: "var(--text3)", fontSize: 12, marginTop: 5 }}>{doc.fileName || "Uploaded PDF"}</div>
                       </div>
-                      <a href={doc.documentUrl} target="_blank" rel="noreferrer" style={{ color: "var(--blue)", fontWeight: 700 }}>
+                      <button
+                        type="button"
+                        onClick={() => openPdfDocument(doc.documentUrl, doc.fileName || `${doc.type}.pdf`)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "var(--brand-dark)",
+                          fontWeight: 800,
+                          cursor: "pointer",
+                          padding: 0,
+                        }}
+                      >
                         Open document
-                      </a>
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -246,46 +268,68 @@ const HelperDashboardPage = ({ user, setPage, showToast }) => {
 
             {tab === "incoming" && (
               profile.verificationStatus !== "approved" ? (
-                <div className="glass" style={{ borderRadius: 16, padding: "32px 24px", textAlign: "center" }}>
-                  <h3 style={{ fontWeight: 800, marginBottom: 10 }}>Incoming work unlocks after approval</h3>
-                  <p style={{ color: "var(--text2)", maxWidth: 560, margin: "0 auto", lineHeight: 1.7 }}>
+                <div style={{ ...panelStyle, padding: "46px 24px", textAlign: "center" }}>
+                  <div className="tag tag-orange" style={{ margin: "0 auto 14px", width: "fit-content" }}>Pending approval</div>
+                  <h3 style={{ fontSize: 30, marginBottom: 10 }}>Incoming work unlocks after approval</h3>
+                  <p style={{ color: "var(--text2)", maxWidth: 600, margin: "0 auto", lineHeight: 1.8 }}>
                     Families cannot see your listing yet. Once the admin approves your helper profile, booking requests will start appearing here.
                   </p>
                 </div>
               ) : incomingLoading ? (
-                <p style={{ color: "var(--text2)" }}>Loading requests...</p>
+                <div style={{ ...panelStyle, padding: 24, color: "var(--text2)" }}>Loading requests...</div>
               ) : incoming.length === 0 ? (
-                <div className="glass" style={{ borderRadius: "var(--radius)", padding: "48px 20px", textAlign: "center" }}>
-                  <h3 style={{ fontWeight: 700, marginBottom: 8 }}>No requests yet</h3>
-                  <p style={{ color: "var(--text2)" }}>Your approved profile is now live. When someone sends a request, you will see it here.</p>
+                <div style={{ ...panelStyle, padding: "46px 24px", textAlign: "center" }}>
+                  <div className="tag tag-green" style={{ margin: "0 auto 14px", width: "fit-content" }}>Profile is live</div>
+                  <h3 style={{ fontSize: 30, marginBottom: 10 }}>No requests yet</h3>
+                  <p style={{ color: "var(--text2)", lineHeight: 1.8, maxWidth: 560, margin: "0 auto" }}>
+                    Your approved profile is now visible. When a family sends a request, you will see it here.
+                  </p>
                 </div>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ display: "grid", gap: 14 }}>
                   {incoming.map((booking) => {
-                    const st = statusStyle(booking.status);
+                    const status = statusStyle(booking.status);
                     const busy = actionId === String(booking._id);
                     return (
-                      <div key={String(booking._id)} className="glass" style={{ borderRadius: 14, padding: "18px 20px" }}>
+                      <div key={String(booking._id)} style={{ ...panelStyle, padding: 22 }}>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between", alignItems: "flex-start" }}>
                           <div>
-                            <div style={{ fontWeight: 700 }}>{booking.user?.name || "Customer"}</div>
-                            <div style={{ color: "var(--text2)", fontSize: 13 }}>{booking.user?.email}</div>
+                            <div className="tag tag-blue" style={{ marginBottom: 10 }}>Household request</div>
+                            <div style={{ fontFamily: "var(--font-display)", fontSize: 28, color: "var(--text)" }}>
+                              {booking.user?.name || "Customer"}
+                            </div>
+                            <div style={{ color: "var(--text2)", fontSize: 14, marginTop: 6 }}>{booking.user?.email}</div>
                           </div>
-                          <span style={{ padding: "6px 12px", borderRadius: 50, fontSize: 12, fontWeight: 600, background: st.bg, color: st.color }}>{st.label}</span>
+                          <span style={{ padding: "8px 13px", borderRadius: 999, background: status.bg, color: status.color, fontWeight: 800, fontSize: 12 }}>
+                            {status.label}
+                          </span>
                         </div>
-                        {booking.message && <p style={{ marginTop: 12, fontSize: 14, color: "var(--text)", lineHeight: 1.5 }}>{booking.message}</p>}
-                        <div style={{ marginTop: 10, fontSize: 13, color: "var(--text2)" }}>
-                          {booking.startDate && `Start: ${new Date(booking.startDate).toLocaleDateString()}  -  `}
-                          {booking.monthlyBudget != null && `Budget: Rs.${Number(booking.monthlyBudget).toLocaleString()}/mo`}
+
+                        {booking.message && <p style={{ marginTop: 14, fontSize: 14, color: "var(--text)", lineHeight: 1.75 }}>{booking.message}</p>}
+
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginTop: 16 }}>
+                          <div style={statTile}>
+                            <div style={{ color: "var(--text3)", fontSize: 12, marginBottom: 6 }}>Preferred start</div>
+                            <div style={{ fontWeight: 800, color: "var(--text)" }}>
+                              {booking.startDate ? new Date(booking.startDate).toLocaleDateString() : "Flexible"}
+                            </div>
+                          </div>
+                          <div style={statTile}>
+                            <div style={{ color: "var(--text3)", fontSize: 12, marginBottom: 6 }}>Budget</div>
+                            <div style={{ fontWeight: 800, color: "var(--text)" }}>
+                              {booking.monthlyBudget != null ? `Rs.${Number(booking.monthlyBudget).toLocaleString()}/mo` : "Not specified"}
+                            </div>
+                          </div>
                         </div>
+
                         {booking.status === "pending" && (
-                          <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
-                            <button type="button" className="btn-primary" disabled={busy} style={{ padding: "8px 18px", fontSize: 14 }} onClick={() => handleStatus(booking._id, "accepted")}>Accept</button>
-                            <button type="button" className="btn-outline" disabled={busy} style={{ padding: "8px 18px", fontSize: 14 }} onClick={() => handleStatus(booking._id, "rejected")}>Decline</button>
+                          <div style={{ display: "flex", gap: 10, marginTop: 18, flexWrap: "wrap" }}>
+                            <button type="button" className="btn-primary" disabled={busy} onClick={() => handleStatus(booking._id, "accepted")}>Accept request</button>
+                            <button type="button" className="btn-outline" disabled={busy} onClick={() => handleStatus(booking._id, "rejected")}>Decline</button>
                           </div>
                         )}
                         {booking.status === "accepted" && (
-                          <button type="button" className="btn-outline" disabled={busy} style={{ marginTop: 14, padding: "8px 18px" }} onClick={() => handleStatus(booking._id, "completed")}>
+                          <button type="button" className="btn-outline" disabled={busy} style={{ marginTop: 18 }} onClick={() => handleStatus(booking._id, "completed")}>
                             Mark completed
                           </button>
                         )}

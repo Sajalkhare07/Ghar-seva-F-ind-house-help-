@@ -24,8 +24,10 @@ const approvedBrowseFilter = {
   ],
 };
 
-const isValidMediaUrl = (value = "") =>
+const isValidImageUpload = (value = "") =>
   /^(https?:\/\/|data:image\/[a-zA-Z0-9.+-]+;base64,)/.test(value);
+
+const isValidPdfUpload = (value = "") => /^data:application\/pdf;base64,/.test(value);
 
 const sanitizeDocuments = (docs) => {
   if (!Array.isArray(docs)) return undefined;
@@ -37,8 +39,13 @@ const sanitizeDocuments = (docs) => {
         typeof doc?.documentNumber === "string" ? doc.documentNumber.trim() : "",
       documentUrl:
         typeof doc?.documentUrl === "string" ? doc.documentUrl.trim() : "",
+      fileName: typeof doc?.fileName === "string" ? doc.fileName.trim() : "",
+      mimeType: typeof doc?.mimeType === "string" ? doc.mimeType.trim() : "application/pdf",
     }))
-    .filter((doc) => doc.type || doc.documentNumber || doc.documentUrl);
+    .filter(
+      (doc) =>
+        doc.type || doc.documentNumber || doc.documentUrl || doc.fileName || doc.mimeType
+    );
 };
 
 const sanitizeHelperPayload = (body = {}) => {
@@ -97,7 +104,7 @@ const validatePhone = (value) => /^\d{10,15}$/.test(String(value || "").replace(
 
 const validateDocuments = (documents) => {
   if (!Array.isArray(documents) || documents.length < 3) {
-    return "Upload at least three documents for verification";
+    return "Upload at least three PDF documents for verification";
   }
 
   const seenTypes = new Set();
@@ -106,7 +113,13 @@ const validateDocuments = (documents) => {
       return "Invalid document type selected";
     }
     if (!doc.documentNumber || !doc.documentUrl) {
-      return "Each document needs a number and URL";
+      return "Each document needs a number and PDF upload";
+    }
+    if (!isValidPdfUpload(doc.documentUrl)) {
+      return "Each verification document must be uploaded as a PDF";
+    }
+    if (doc.mimeType && doc.mimeType !== "application/pdf") {
+      return "Only PDF documents are allowed for verification";
     }
     if (seenTypes.has(doc.type)) {
       return "Please avoid uploading the same document type twice";
@@ -165,7 +178,7 @@ const validateHelperPayload = (payload, isPartial = false) => {
 
   if (!isPartial || payload.livePhoto !== undefined) {
     if (!payload.livePhoto) return "Live helper photo is required";
-    if (!isValidMediaUrl(payload.livePhoto)) {
+    if (!isValidImageUpload(payload.livePhoto)) {
       return "Live helper photo must be a valid image upload or URL";
     }
   }

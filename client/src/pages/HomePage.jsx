@@ -1,11 +1,6 @@
-// client/src/pages/HomePage.jsx
-import { useState, useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { TESTIMONIALS } from "../data/helpers";
 
-// ══════════════════════════════════════════════════════════════════════════════
-// SCROLL REVEAL HOOK
-// Watches elements and adds .visible class when they enter the viewport
-// ══════════════════════════════════════════════════════════════════════════════
 const useScrollReveal = () => {
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -13,371 +8,211 @@ const useScrollReveal = () => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             entry.target.classList.add("visible");
-            // Once revealed, stop watching (animation plays once)
             observer.unobserve(entry.target);
           }
         });
       },
-      { threshold: 0.12, rootMargin: "0px 0px -40px 0px" }
+      { threshold: 0.12, rootMargin: "0px 0px -50px 0px" }
     );
 
-    // Observe all elements with reveal classes
-    const targets = document.querySelectorAll(
-      ".reveal, .reveal-scale, .reveal-left"
-    );
-    targets.forEach((el) => observer.observe(el));
+    document
+      .querySelectorAll(".reveal, .reveal-scale, .reveal-left")
+      .forEach((el) => observer.observe(el));
 
     return () => observer.disconnect();
   }, []);
 };
 
-// ══════════════════════════════════════════════════════════════════════════════
-// ANIMATED COUNTER
-// ══════════════════════════════════════════════════════════════════════════════
-const useCounter = (target, duration = 1800) => {
-  const [count, setCount] = useState(0);
-  useEffect(() => {
-    let start = 0;
-    const step = target / (duration / 16);
-    const timer = setInterval(() => {
-      start += step;
-      if (start >= target) { setCount(target); clearInterval(timer); }
-      else setCount(Math.floor(start));
-    }, 16);
-    return () => clearInterval(timer);
-  }, [target]);
-  return count;
-};
+const services = [
+  { title: "Maid", subtitle: "Daily home support", tone: "#102A43" },
+  { title: "Cook", subtitle: "Home-cooked meals", tone: "#1B9C85" },
+  { title: "Cleaner", subtitle: "Deep and routine cleaning", tone: "#4A6572" },
+  { title: "Cook + Maid", subtitle: "Flexible mixed support", tone: "#4A6572" },
+];
 
-// ══════════════════════════════════════════════════════════════════════════════
-// SUB-COMPONENTS
-// ══════════════════════════════════════════════════════════════════════════════
+const whyItems = [
+  { title: "Verified listings", text: "Profiles stay hidden until documents are reviewed by the admin team." },
+  { title: "Simple contact flow", text: "Families can browse, compare, and connect without clutter or confusion." },
+  { title: "Designed for trust", text: "Cleaner cards, stronger hierarchy, and calmer details help people decide faster." },
+];
 
-const StatCard = ({ value, suffix, label, icon }) => {
-  const count = useCounter(value);
-  return (
-    <div
-      style={{
-        background: "#fff", border: "1px solid #e8edf5", borderRadius: 16,
-        padding: "22px 18px", textAlign: "center",
-        boxShadow: "0 2px 10px rgba(37,99,235,0.06)", transition: "all 0.25s",
-      }}
-      onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(37,99,235,0.12)"; }}
-      onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)";    e.currentTarget.style.boxShadow = "0 2px 10px rgba(37,99,235,0.06)"; }}
-    >
-      <div style={{ fontSize: 26, marginBottom: 8 }}>{icon}</div>
-      <div style={{ fontFamily: "'Playfair Display', serif", fontWeight: 800, fontSize: 30, color: "#1d4ed8", lineHeight: 1 }}>
-        {count}{suffix}
-      </div>
-      <div style={{ color: "#64748b", fontSize: 12, marginTop: 5, fontWeight: 500, letterSpacing: "0.3px" }}>{label}</div>
-    </div>
-  );
-};
+const steps = [
+  { label: "1", title: "Browse nearby helpers", text: "Filter by city, service, and monthly budget to focus on relevant profiles." },
+  { label: "2", title: "Review the profile", text: "See service details, availability, pricing, reviews, and verified helper photos." },
+  { label: "3", title: "Send a request", text: "Reach out with confidence once the right match feels clear." },
+];
 
-const ServicePill = ({ icon, name, count, color, bg, onClick }) => (
-  <button onClick={onClick}
-    style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 18px", borderRadius: 50, background: bg, border: `1.5px solid ${color}22`, cursor: "pointer", transition: "all 0.2s", fontFamily: "'Inter', sans-serif", fontWeight: 600, fontSize: 13, color, outline: "none", letterSpacing: "0.01em" }}
-    onMouseEnter={e => { e.currentTarget.style.background = color; e.currentTarget.style.color = "#fff"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 6px 16px ${color}33`; }}
-    onMouseLeave={e => { e.currentTarget.style.background = bg;    e.currentTarget.style.color = color; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
-  >
-    <span style={{ fontSize: 16 }}>{icon}</span>
-    <span>{name}</span>
-    <span style={{ background: `${color}18`, color, borderRadius: 50, padding: "1px 8px", fontSize: 11, fontWeight: 700 }}>{count}</span>
-  </button>
-);
-
-// ── STEP CARD — scroll reveal with unfold animation ────────────────────────
-const StepCard = ({ number, icon, title, desc, delay }) => (
-  <div
-    className={`reveal-scale reveal-delay-${delay}`}
-    style={{
-      background: "#fff", borderRadius: 20, padding: "32px 28px",
-      border: "1.5px solid #e8edf5",
-      boxShadow: "0 2px 10px rgba(37,99,235,0.05)",
-      position: "relative", overflow: "hidden",
-      transition: "border-color 0.3s, box-shadow 0.3s, transform 0.3s",
-    }}
-    onMouseEnter={e => { e.currentTarget.style.borderColor = "#bfdbfe"; e.currentTarget.style.boxShadow = "0 12px 36px rgba(37,99,235,0.13)"; e.currentTarget.style.transform = "translateY(-5px)"; }}
-    onMouseLeave={e => { e.currentTarget.style.borderColor = "#e8edf5"; e.currentTarget.style.boxShadow = "0 2px 10px rgba(37,99,235,0.05)"; e.currentTarget.style.transform = "translateY(0)"; }}
-  >
-    {/* Ghost step number */}
-    <div style={{ position: "absolute", top: -8, right: 0, fontFamily: "'Playfair Display', serif", fontWeight: 800, fontSize: 80, color: "#2563eb", opacity: 0.04, lineHeight: 1, userSelect: "none", letterSpacing: "-4px" }}>{number}</div>
-
-    {/* Step indicator pill */}
-    <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 50, padding: "4px 12px", marginBottom: 18 }}>
-      <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 11, fontWeight: 700, color: "#2563eb", letterSpacing: "0.8px", textTransform: "uppercase" }}>Step {number}</span>
-    </div>
-
-    {/* Icon */}
-    <div style={{ width: 52, height: 52, borderRadius: 14, background: "linear-gradient(135deg, #eff6ff, #dbeafe)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 18, border: "1px solid #bfdbfe" }}>
-      {icon}
-    </div>
-
-    <h3 style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: 17, marginBottom: 10, color: "#0f172a", letterSpacing: "-0.01em" }}>{title}</h3>
-    <p style={{ color: "#64748b", lineHeight: 1.75, fontSize: 14, fontFamily: "'Inter', sans-serif" }}>{desc}</p>
-  </div>
-);
-
-// ── TESTIMONIAL CARD — scroll reveal ──────────────────────────────────────
-const TestimonialCard = ({ t, delay }) => (
-  <div
-    className={`reveal reveal-delay-${delay}`}
-    style={{
-      background: "#fff", borderRadius: 20, padding: "28px 26px",
-      border: "1.5px solid #e8edf5",
-      boxShadow: "0 2px 10px rgba(37,99,235,0.05)",
-      transition: "transform 0.3s, box-shadow 0.3s, border-color 0.3s",
-      display: "flex", flexDirection: "column", gap: 16,
-    }}
-    onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-5px)"; e.currentTarget.style.boxShadow = "0 14px 36px rgba(37,99,235,0.11)"; e.currentTarget.style.borderColor = "#bfdbfe"; }}
-    onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)";    e.currentTarget.style.boxShadow = "0 2px 10px rgba(37,99,235,0.05)"; e.currentTarget.style.borderColor = "#e8edf5"; }}
-  >
-    {/* Quote mark */}
-    <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 48, lineHeight: 1, color: "#bfdbfe", fontStyle: "italic", marginBottom: -8 }}>"</div>
-
-    {/* Stars */}
-    <div style={{ display: "flex", gap: 2 }}>
-      {"★★★★★".split("").map((s, i) => <span key={i} style={{ color: "#f59e0b", fontSize: 13 }}>{s}</span>)}
-    </div>
-
-    <p style={{ color: "#334155", lineHeight: 1.8, fontSize: 15, fontFamily: "'Inter', sans-serif", fontWeight: 400, flex: 1, fontStyle: "italic" }}>
-      {t.text}
-    </p>
-
-    <div style={{ display: "flex", alignItems: "center", gap: 12, paddingTop: 12, borderTop: "1px solid #f1f5f9" }}>
-      <div style={{ width: 44, height: 44, borderRadius: "50%", background: "linear-gradient(135deg, #2563eb, #7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: 14, color: "#fff", flexShrink: 0 }}>
-        {t.avatar}
-      </div>
-      <div>
-        <div style={{ fontWeight: 600, fontSize: 15, color: "#0f172a", fontFamily: "'Inter', sans-serif", letterSpacing: "-0.01em" }}>{t.name}</div>
-        <div style={{ color: "#94a3b8", fontSize: 12, fontFamily: "'Inter', sans-serif", marginTop: 2 }}>{t.role} · {t.city}</div>
-      </div>
-    </div>
-  </div>
-);
-
-// ── WHY CARD — scroll reveal ───────────────────────────────────────────────
-const WhyCard = ({ icon, title, desc, color, bg, delay }) => (
-  <div
-    className={`reveal reveal-delay-${delay}`}
-    style={{
-      background: "#f8fafc", borderRadius: 18, padding: "22px 20px",
-      border: "1.5px solid #f1f5f9",
-      boxShadow: "0 2px 6px rgba(0,0,0,0.04)",
-      transition: "transform 0.3s, box-shadow 0.3s, border-color 0.3s, background 0.3s",
-    }}
-    onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-5px)"; e.currentTarget.style.boxShadow = `0 14px 32px ${color}18`; e.currentTarget.style.borderColor = `${color}28`; e.currentTarget.style.background = "#fff"; }}
-    onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)";    e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.04)"; e.currentTarget.style.borderColor = "#f1f5f9"; e.currentTarget.style.background = "#f8fafc"; }}
-  >
-    <div style={{ width: 46, height: 46, borderRadius: 13, background: bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, marginBottom: 14, border: `1px solid ${color}20` }}>
-      {icon}
-    </div>
-    <h3 style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: 15, color: "#0f172a", marginBottom: 8, letterSpacing: "-0.01em" }}>{title}</h3>
-    <p style={{ color: "#64748b", fontSize: 13, lineHeight: 1.7, fontFamily: "'Inter', sans-serif" }}>{desc}</p>
-  </div>
-);
-
-// ══════════════════════════════════════════════════════════════════════════════
-// SECTION HEADING HELPER
-// ══════════════════════════════════════════════════════════════════════════════
-const SectionHeading = ({ badge, badgeBg, badgeColor, badgeBorder, title, highlight, subtitle }) => (
-  <div className="reveal" style={{ textAlign: "center", marginBottom: 52 }}>
-    <div style={{ display: "inline-block", background: badgeBg, color: badgeColor, border: `1px solid ${badgeBorder}`, borderRadius: 50, padding: "5px 16px", fontSize: 11, fontWeight: 700, marginBottom: 14, letterSpacing: "1px", textTransform: "uppercase", fontFamily: "'Inter', sans-serif" }}>
-      {badge}
-    </div>
-    <h2 style={{ fontFamily: "'Playfair Display', serif", fontWeight: 800, fontSize: "clamp(26px, 4vw, 40px)", color: "#0f172a", lineHeight: 1.2, letterSpacing: "-0.02em" }}>
-      {title}{" "}
-      {highlight && (
-        <span style={{ background: "linear-gradient(135deg, #2563eb, #7c3aed)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", fontStyle: "italic" }}>
-          {highlight}
-        </span>
-      )}
-    </h2>
-    {subtitle && (
-      <p style={{ color: "#64748b", fontSize: 16, marginTop: 12, maxWidth: 460, margin: "12px auto 0", fontFamily: "'Inter', sans-serif", lineHeight: 1.7 }}>
-        {subtitle}
-      </p>
-    )}
-  </div>
-);
-
-// ══════════════════════════════════════════════════════════════════════════════
-// MAIN HOMEPAGE
-// ══════════════════════════════════════════════════════════════════════════════
 const HomePage = ({ setPage }) => {
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [searchCity, setSearchCity]           = useState("");
-  const [searchService, setSearchService]     = useState("");
-
-  // Initialise scroll reveal after mount
   useScrollReveal();
 
   return (
-    <div style={{ background: "#f8fafc", minHeight: "100vh" }}>
+    <div className="page-content" style={{ minHeight: "100vh", paddingTop: 108 }}>
+      <section style={{ padding: "12px 24px 56px" }}>
+        <div
+          style={{
+            maxWidth: 1220,
+            margin: "0 auto",
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+            gap: 26,
+            alignItems: "stretch",
+          }}
+        >
+          <div className="glass reveal-left" style={{ borderRadius: 38, padding: "54px 48px", background: "linear-gradient(145deg, rgba(255,255,255,0.98), rgba(243,247,249,0.94))" }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 999, background: "rgba(48,78,87,0.08)", color: "var(--accent)", fontWeight: 800, fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 20 }}>
+              Modern India Minimal
+            </div>
+            <h1 style={{ fontSize: "clamp(42px, 7vw, 76px)", lineHeight: 1.02, maxWidth: 680, marginBottom: 18 }}>
+              Trusted domestic help,
+              <span className="gradient-text"> beautifully simplified.</span>
+            </h1>
+            <p style={{ maxWidth: 560, color: "var(--text2)", fontSize: 17, lineHeight: 1.9, marginBottom: 30 }}>
+              GharSeva helps families discover verified maids, cooks, and cleaners in a calmer, more trustworthy way. The experience feels premium, but it stays easy to use.
+            </p>
 
-      {/* ══ HERO ════════════════════════════════════════════════════════════ */}
-      <section className="video-hero-wrapper" style={{ borderBottom: "1px solid #e2e8f0", paddingTop: 100, paddingBottom: 88 }}>
-        <video className="video-hero-bg" autoPlay muted loop playsInline>
-          <source src="/hero-video.mp4" type="video/mp4" />
-        </video>
-        <div className="video-hero-overlay" />
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
+              <button className="btn-primary" onClick={() => setPage("browse")}>Browse Helpers</button>
+              <button className="btn-outline" onClick={() => setPage("register")}>Register as Helper</button>
+            </div>
+            <div style={{ color: "var(--text3)", fontSize: 13, fontWeight: 700, cursor: "pointer", width: "fit-content" }} onClick={() => setPage("admin")}>
+              Admin review access
+            </div>
 
-        {/* Blobs */}
-        <div style={{ position: "absolute", top: -60, right: -60, width: 380, height: 380, borderRadius: "50%", background: "rgba(37,99,235,0.07)", pointerEvents: "none", zIndex: 2 }} />
-        <div style={{ position: "absolute", bottom: -80, left: -80, width: 280, height: 280, borderRadius: "50%", background: "rgba(124,58,237,0.05)", pointerEvents: "none", zIndex: 2 }} />
-
-        <div className="video-hero-content" style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px", textAlign: "center" }}>
-
-          {/* Live badge */}
-          <div className="fade-up" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 50, padding: "6px 16px", marginBottom: 28, fontSize: 12, color: "#1d4ed8", fontFamily: "'Inter', sans-serif", fontWeight: 600, letterSpacing: "0.3px" }}>
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", display: "inline-block", boxShadow: "0 0 0 3px rgba(34,197,94,0.2)" }} />
-            Now live in Indore, Bhopal & Delhi
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 16, marginTop: 34 }}>
+              {[
+                ["500+", "verified helper profiles"],
+                ["4.8/5", "average user sentiment"],
+                ["3 cities", "currently supported"],
+              ].map(([value, label]) => (
+                <div key={label} style={{ padding: "14px 0", borderTop: "1px solid rgba(74,101,114,0.18)" }}>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 700 }}>{value}</div>
+                  <div style={{ color: "var(--text3)", fontSize: 13 }}>{label}</div>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Headline — Playfair Display */}
-          <h1 className="fade-up-1" style={{ fontFamily: "'Playfair Display', serif", fontWeight: 800, fontSize: "clamp(34px, 5.5vw, 68px)", lineHeight: 1.1, color: "#0f172a", maxWidth: 820, margin: "0 auto 20px", letterSpacing: "-0.03em" }}>
-            Find Trusted{" "}
-            <span style={{ background: "linear-gradient(135deg, #2563eb, #7c3aed)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", fontStyle: "italic" }}>
-              Domestic Helpers
-            </span>{" "}
-            Near You
-          </h1>
+          <div className="reveal-scale" style={{ display: "grid", gap: 18 }}>
+            <div className="glass" style={{ borderRadius: 34, padding: 24, background: "linear-gradient(160deg, rgba(255,255,255,0.98), rgba(239,245,248,0.94))" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
+                <div>
+                  <div style={{ color: "var(--text3)", fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Quick Match</div>
+                  <h3 style={{ fontSize: 28, marginBottom: 6 }}>Find by service</h3>
+                  <p style={{ color: "var(--text2)", fontSize: 14 }}>A simpler first step for busy families.</p>
+                </div>
+                <div style={{ width: 58, height: 58, borderRadius: 18, background: "rgba(27,156,133,0.10)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--brand)", fontSize: 24 }}>+</div>
+              </div>
+              <div style={{ display: "grid", gap: 12 }}>
+                {services.map((item) => (
+                  <button
+                    key={item.title}
+                    onClick={() => setPage("browse")}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      width: "100%",
+                      background: "rgba(255,255,255,0.96)",
+                      border: "1px solid rgba(74,101,114,0.16)",
+                      borderRadius: 18,
+                      padding: "14px 16px",
+                      cursor: "pointer",
+                      textAlign: "left",
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 800, color: "var(--text)" }}>{item.title}</div>
+                      <div style={{ color: "var(--text3)", fontSize: 13 }}>{item.subtitle}</div>
+                    </div>
+                    <div style={{ width: 12, height: 12, borderRadius: 999, background: item.tone }} />
+                  </button>
+                ))}
+              </div>
+            </div>
 
-          <p className="fade-up-2" style={{ fontSize: "clamp(15px, 1.8vw, 18px)", color: "#475569", maxWidth: 540, margin: "0 auto 40px", lineHeight: 1.8, fontFamily: "'Inter', sans-serif", fontWeight: 400 }}>
-            Verified maids, cooks & cleaners — affordable prices, transparent reviews, zero middlemen.
-          </p>
-
-          {/* Search bar */}
-          <div className="fade-up-3" style={{ maxWidth: 620, margin: "0 auto 48px", background: "#fff", borderRadius: 60, border: isSearchFocused ? "2px solid #2563eb" : "2px solid #e2e8f0", boxShadow: isSearchFocused ? "0 0 0 4px rgba(37,99,235,0.08), 0 8px 30px rgba(37,99,235,0.12)" : "0 4px 20px rgba(0,0,0,0.07)", padding: "8px 8px 8px 22px", display: "flex", alignItems: "center", gap: 10, transition: "all 0.3s" }}>
-            <span style={{ fontSize: 18 }}>🏙️</span>
-            <select value={searchCity} onChange={e => setSearchCity(e.target.value)} onFocus={() => setIsSearchFocused(true)} onBlur={() => setIsSearchFocused(false)}
-              style={{ border: "none", outline: "none", background: "transparent", fontSize: 14, color: "#0f172a", flex: 1, cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
-              <option value="">Select City</option>
-              {["Indore", "Bhopal", "Delhi"].map(c => <option key={c}>{c}</option>)}
-            </select>
-            <div style={{ width: 1, height: 26, background: "#e2e8f0", flexShrink: 0 }} />
-            <span style={{ fontSize: 18 }}>🧹</span>
-            <select value={searchService} onChange={e => setSearchService(e.target.value)} onFocus={() => setIsSearchFocused(true)} onBlur={() => setIsSearchFocused(false)}
-              style={{ border: "none", outline: "none", background: "transparent", fontSize: 14, color: "#0f172a", flex: 1, cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
-              <option value="">Service Type</option>
-              {["Maid", "Cook", "Cleaner", "Cook+Maid"].map(s => <option key={s}>{s}</option>)}
-            </select>
-            <button onClick={() => setPage("browse")}
-              style={{ background: "linear-gradient(135deg, #2563eb, #1d4ed8)", color: "#fff", border: "none", borderRadius: 50, padding: "11px 26px", fontSize: 14, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "'Inter', sans-serif", boxShadow: "0 4px 12px rgba(37,99,235,0.32)", transition: "all 0.2s", letterSpacing: "0.01em" }}
-              onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.04)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(37,99,235,0.42)"; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)";    e.currentTarget.style.boxShadow = "0 4px 12px rgba(37,99,235,0.32)"; }}
-            >
-              Find Help →
-            </button>
-          </div>
-
-          {/* Service pills */}
-          <div className="fade-up-3" style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginBottom: 56 }}>
-            <ServicePill icon="🧹" name="Maid"      count="180+" color="#2563eb" bg="#eff6ff" onClick={() => setPage("browse")} />
-            <ServicePill icon="👨‍🍳" name="Cook"      count="120+" color="#7c3aed" bg="#f5f3ff" onClick={() => setPage("browse")} />
-            <ServicePill icon="✨"  name="Cleaner"   count="90+"  color="#0891b2" bg="#ecfeff" onClick={() => setPage("browse")} />
-            <ServicePill icon="🏠" name="Cook+Maid" count="60+"  color="#059669" bg="#ecfdf5" onClick={() => setPage("browse")} />
-          </div>
-
-          {/* Stat cards */}
-          <div className="fade-up-4" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(155px, 1fr))", gap: 14, maxWidth: 680, margin: "0 auto" }}>
-            <StatCard value={500} suffix="+"  label="Verified Helpers" icon="✅" />
-            <StatCard value={10}  suffix="K+" label="Happy Families"   icon="🏠" />
-            <StatCard value={3}   suffix=""   label="Cities Covered"   icon="🏙️" />
-            <StatCard value={48}  suffix="★"  label="Avg Rating 4.8"  icon="⭐" />
-          </div>
-        </div>
-      </section>
-
-      {/* ══ HOW IT WORKS — scroll reveal cards ══════════════════════════════ */}
-      <section style={{ padding: "88px 24px", maxWidth: 1100, margin: "0 auto" }}>
-        <SectionHeading
-          badge="Simple Process"
-          badgeBg="#eff6ff" badgeColor="#2563eb" badgeBorder="#bfdbfe"
-          title="How"
-          highlight="GharSeva Works"
-          subtitle="Three simple steps to find your perfect domestic helper"
-        />
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(270px, 1fr))", gap: 24 }}>
-          <StepCard delay={1} number="01" icon="🔍" title="Search & Filter"
-            desc="Browse verified helpers by city, service type, price range and availability. Smart filters help you find the right match in minutes." />
-          <StepCard delay={2} number="02" icon="📋" title="View Full Profiles"
-            desc="Check real ratings, genuine reviews, detailed skills, experience and transparent pricing before making any decision." />
-          <StepCard delay={3} number="03" icon="📞" title="Connect Directly"
-            desc="Call or WhatsApp the helper directly. No middlemen, no hidden commission. Simple, honest, and instant." />
-        </div>
-      </section>
-
-      {/* ══ WHY GHARSEVA — scroll reveal cards ══════════════════════════════ */}
-      <section style={{ background: "#fff", padding: "88px 24px", borderTop: "1px solid #f1f5f9", borderBottom: "1px solid #f1f5f9" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <SectionHeading
-            badge="Why Us"
-            badgeBg="#f5f3ff" badgeColor="#7c3aed" badgeBorder="#ddd6fe"
-            title="Why Choose"
-            highlight="GharSeva?"
-            subtitle="Built specifically for bachelors and working professionals in Indian cities"
-          />
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 18 }}>
-            <WhyCard delay={1} icon="🛡️" title="Background Verified"  desc="Every helper passes our verification before being listed on the platform."     color="#2563eb" bg="#eff6ff" />
-            <WhyCard delay={2} icon="💰" title="Transparent Pricing"   desc="See the exact monthly price upfront. No hidden charges, ever."                  color="#7c3aed" bg="#f5f3ff" />
-            <WhyCard delay={3} icon="⭐" title="Real Reviews"          desc="Genuine ratings from verified families and working professionals only."          color="#d97706" bg="#fef9c3" />
-            <WhyCard delay={4} icon="📱" title="Direct Connection"     desc="Contact helpers via call or WhatsApp directly. Zero commission."                 color="#059669" bg="#ecfdf5" />
-            <WhyCard delay={5} icon="📍" title="Locality Based"        desc="Find helpers in your specific area, not just by city."                          color="#0891b2" bg="#ecfeff" />
-            <WhyCard delay={6} icon="⚡" title="Instant Access"        desc="No approval wait. Connect with available helpers right now."                    color="#dc2626" bg="#fef2f2" />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
+              <div className="glass" style={{ borderRadius: 28, padding: 22 }}>
+                <div style={{ color: "var(--text3)", fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>What improves</div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 28, marginBottom: 10 }}>Trust at first glance</div>
+                <p style={{ color: "var(--text2)", fontSize: 14, lineHeight: 1.8 }}>Real helper photos, softer cards, and better spacing make every profile feel more credible.</p>
+              </div>
+              <div className="glass" style={{ borderRadius: 28, padding: 22, background: "var(--grad-soft)" }}>
+                <div style={{ color: "var(--text3)", fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>Design feeling</div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 28, marginBottom: 10 }}>Warm, calm, modern</div>
+                <p style={{ color: "var(--text2)", fontSize: 14, lineHeight: 1.8 }}>Terracotta and teal add personality without losing clarity or ease of use.</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ══ TESTIMONIALS — scroll reveal cards ══════════════════════════════ */}
-      <section style={{ padding: "88px 24px" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <SectionHeading
-            badge="Real Reviews"
-            badgeBg="#f0fdf4" badgeColor="#15803d" badgeBorder="#bbf7d0"
-            title="What People"
-            highlight="Say"
-            subtitle="Real stories from families and professionals across India"
-          />
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 24 }}>
-            {TESTIMONIALS.map((t, i) => (
-              <TestimonialCard key={i} t={t} delay={i + 1} />
+      <section style={{ padding: "0 24px 56px" }}>
+        <div style={{ maxWidth: 1220, margin: "0 auto" }}>
+          <div className="reveal" style={{ marginBottom: 26 }}>
+            <div style={{ color: "var(--text3)", fontSize: 12, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>Why GharSeva</div>
+            <h2 style={{ fontSize: "clamp(28px, 4vw, 48px)", marginBottom: 10 }}>A marketplace that feels human, not mechanical.</h2>
+            <p style={{ color: "var(--text2)", maxWidth: 620, fontSize: 16, lineHeight: 1.8 }}>The redesign keeps the product simple, but makes the whole journey feel warmer, more intentional, and easier to trust.</p>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 20 }}>
+            {whyItems.map((item, index) => (
+              <div key={item.title} className={`glass reveal reveal-delay-${index + 1}`} style={{ borderRadius: 28, padding: 26 }}>
+                <div style={{ width: 42, height: 42, borderRadius: 14, background: index === 1 ? "rgba(48,78,87,0.10)" : "rgba(27,156,133,0.10)", marginBottom: 18 }} />
+                <h3 style={{ fontSize: 26, marginBottom: 10 }}>{item.title}</h3>
+                <p style={{ color: "var(--text2)", fontSize: 14, lineHeight: 1.85 }}>{item.text}</p>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ══ CTA BANNER ══════════════════════════════════════════════════════ */}
-      <section style={{ padding: "0 24px 88px" }}>
-        <div className="reveal" style={{ maxWidth: 840, margin: "0 auto", background: "linear-gradient(135deg, #1d4ed8 0%, #2563eb 40%, #7c3aed 100%)", borderRadius: 28, padding: "60px 48px", textAlign: "center", position: "relative", overflow: "hidden", boxShadow: "0 20px 60px rgba(37,99,235,0.28)" }}>
-          <div style={{ position: "absolute", top: 16,    right: 36,  width: 90,  height: 90,  borderRadius: "50%", background: "rgba(255,255,255,0.07)" }} />
-          <div style={{ position: "absolute", bottom: -24, left: 16,  width: 130, height: 130, borderRadius: "50%", background: "rgba(255,255,255,0.05)" }} />
-
-          <h2 style={{ fontFamily: "'Playfair Display', serif", fontWeight: 800, fontSize: "clamp(24px, 4vw, 42px)", color: "#fff", marginBottom: 14, letterSpacing: "-0.02em", lineHeight: 1.2, fontStyle: "italic" }}>
-            Ready to Find Your Perfect Helper?
-          </h2>
-          <p style={{ color: "rgba(255,255,255,0.82)", fontSize: 16, maxWidth: 480, margin: "0 auto 36px", lineHeight: 1.8, fontFamily: "'Inter', sans-serif" }}>
-            Join thousands of happy families across India who found reliable domestic help through GharSeva.
-          </p>
-          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <button onClick={() => setPage("browse")}
-              style={{ background: "#fff", color: "#1d4ed8", border: "none", borderRadius: 50, padding: "13px 36px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif", boxShadow: "0 4px 16px rgba(0,0,0,0.15)", transition: "all 0.2s", letterSpacing: "0.01em" }}
-              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.22)"; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)";    e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.15)"; }}
-            >
-              Find Help Now
-            </button>
-            <button onClick={() => setPage("register")}
-              style={{ background: "rgba(255,255,255,0.14)", color: "#fff", border: "1.5px solid rgba(255,255,255,0.38)", borderRadius: 50, padding: "13px 36px", fontSize: 15, fontWeight: 600, cursor: "pointer", fontFamily: "'Inter', sans-serif", transition: "all 0.2s" }}
-              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.24)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.14)"; }}
-            >
-              Register as Helper
-            </button>
+      <section style={{ padding: "0 24px 56px" }}>
+        <div className="glass" style={{ maxWidth: 1220, margin: "0 auto", borderRadius: 36, padding: "36px 34px" }}>
+          <div className="reveal" style={{ display: "flex", justifyContent: "space-between", gap: 20, alignItems: "flex-end", flexWrap: "wrap", marginBottom: 26 }}>
+            <div>
+              <div style={{ color: "var(--text3)", fontSize: 12, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>How it works</div>
+              <h2 style={{ fontSize: "clamp(28px, 4vw, 44px)" }}>Simple steps, cleaner decisions.</h2>
+            </div>
+            <p style={{ color: "var(--text2)", maxWidth: 420, lineHeight: 1.8 }}>The app should never make people work hard just to understand what to do next.</p>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 18 }}>
+            {steps.map((step, index) => (
+              <div key={step.label} className={`reveal-scale reveal-delay-${index + 1}`} style={{ background: "rgba(255,255,255,0.96)", border: "1px solid rgba(74,101,114,0.16)", borderRadius: 28, padding: 24 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 999, background: "var(--grad)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, marginBottom: 16 }}>{step.label}</div>
+                <h3 style={{ fontSize: 24, marginBottom: 10 }}>{step.title}</h3>
+                <p style={{ color: "var(--text2)", fontSize: 14, lineHeight: 1.85 }}>{step.text}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
+      <section style={{ padding: "0 24px 72px" }}>
+        <div style={{ maxWidth: 1220, margin: "0 auto" }}>
+          <div className="reveal" style={{ marginBottom: 24 }}>
+            <div style={{ color: "var(--text3)", fontSize: 12, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>Voices</div>
+            <h2 style={{ fontSize: "clamp(28px, 4vw, 46px)", marginBottom: 8 }}>Real responses from people using the platform.</h2>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 18 }}>
+            {TESTIMONIALS.slice(0, 3).map((testimonial, index) => (
+              <div key={testimonial.name} className={`glass reveal reveal-delay-${index + 1}`} style={{ borderRadius: 28, padding: 24 }}>
+                <div style={{ color: "var(--gold)", marginBottom: 12, fontSize: 14 }}>*****</div>
+                <p style={{ color: "var(--text)", fontSize: 15, lineHeight: 1.9, marginBottom: 18 }}>
+                  {testimonial.text}
+                </p>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 999, background: "var(--grad)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800 }}>
+                    {testimonial.avatar}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 800 }}>{testimonial.name}</div>
+                    <div style={{ color: "var(--text3)", fontSize: 13 }}>{testimonial.role} - {testimonial.city}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
     </div>
   );
 };

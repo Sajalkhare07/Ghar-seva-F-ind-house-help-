@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { submitRating, getMyRating } from "../api/index";
 import Avatar from "./Avatar";
 
+const starLabel = ["", "Poor", "Fair", "Good", "Very Good", "Excellent"];
+
 const RatingModal = ({ helper, user, onClose, onRated }) => {
   const [hovered, setHovered] = useState(0);
   const [selected, setSelected] = useState(0);
@@ -53,38 +55,38 @@ const RatingModal = ({ helper, user, onClose, onRated }) => {
     }
   };
 
-  const starLabel = ["", "Poor", "Fair", "Good", "Very Good", "Excellent"];
   const activeVal = hovered || selected;
 
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div
         style={{
-          background: "#fff",
-          borderRadius: 24,
-          padding: "36px 32px",
-          maxWidth: 420,
           width: "100%",
-          boxShadow: "0 20px 60px rgba(37,99,235,0.18)",
-          border: "1px solid #e2e8f0",
+          maxWidth: 460,
+          borderRadius: 28,
+          padding: "30px 28px",
+          background: "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(243,247,249,0.96))",
+          boxShadow: "0 28px 70px rgba(61,37,23,0.18)",
+          border: "1px solid rgba(201,178,149,0.84)",
           animation: "fadeUp 0.3s ease",
           position: "relative",
         }}
       >
         <button
           onClick={onClose}
+          aria-label="Close rating"
           style={{
             position: "absolute",
             top: 16,
             right: 16,
-            background: "#f8fafc",
-            border: "1px solid #e2e8f0",
+            background: "rgba(255,248,240,0.9)",
+            border: "1px solid rgba(74,101,114,0.18)",
             borderRadius: "50%",
-            width: 32,
-            height: 32,
+            width: 34,
+            height: 34,
             cursor: "pointer",
             fontSize: 16,
-            color: "#64748b",
+            color: "var(--text2)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -94,49 +96,56 @@ const RatingModal = ({ helper, user, onClose, onRated }) => {
         </button>
 
         {success ? (
-          <div style={{ textAlign: "center", padding: "12px 0" }}>
-            <div style={{ fontSize: 56, marginBottom: 16, animation: "float 1s ease" }}>Done</div>
-            <h3 style={{ fontFamily: "Syne, sans-serif", fontWeight: 800, fontSize: 22, color: "#0f172a", marginBottom: 8 }}>
-              Rating Submitted!
+          <div style={{ textAlign: "center", padding: "18px 0 8px" }}>
+            <div style={{ fontSize: 18, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--green)", fontWeight: 800, marginBottom: 10 }}>
+              Thank you
+            </div>
+            <h3 style={{ fontWeight: 700, fontSize: 30, color: "var(--text)", marginBottom: 8 }}>
+              Rating submitted
             </h3>
-            <p style={{ color: "#64748b", fontSize: 15 }}>
-              Thank you for rating <strong>{helper.name}</strong>
+            <p style={{ color: "var(--text2)", fontSize: 15, lineHeight: 1.7 }}>
+              Your feedback for <strong>{helper.name}</strong> has been saved.
             </p>
-            <div style={{ display: "flex", justifyContent: "center", gap: 4, marginTop: 12 }}>
+            <div style={{ display: "flex", justifyContent: "center", gap: 5, marginTop: 16 }}>
               {[1, 2, 3, 4, 5].map((i) => (
-                <span key={i} style={{ fontSize: 24, color: i <= selected ? "#f59e0b" : "#e2e8f0" }}>*</span>
+                <span key={i} style={{ fontSize: 24, color: i <= selected ? "var(--gold)" : "rgba(201,178,149,0.55)" }}>*</span>
               ))}
             </div>
           </div>
         ) : (
           <>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 22 }}>
               <Avatar
                 initials={helper.avatar || (helper.name || "").slice(0, 2).toUpperCase()}
                 gradient={helper.gradient}
                 imageUrl={helper.livePhoto}
-                size={48}
+                size={54}
               />
               <div>
-                <div style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, fontSize: 17, color: "#0f172a" }}>
-                  {existingRating ? "Update Your Rating" : "Rate This Helper"}
+                <div style={{ color: "var(--text3)", fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>
+                  {existingRating ? "Update your feedback" : "Share your feedback"}
                 </div>
-                <div style={{ color: "#64748b", fontSize: 13 }}>{helper.name}</div>
+                <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 26, color: "var(--text)" }}>
+                  {helper.name}
+                </div>
+                <div style={{ color: "var(--text2)", fontSize: 13 }}>
+                  {user?.name ? `Signed in as ${user.name}` : "Your rating helps other families"}
+                </div>
               </div>
             </div>
 
             {fetching ? (
-              <div style={{ textAlign: "center", padding: "20px 0", color: "#64748b" }}>Loading...</div>
+              <div style={{ textAlign: "center", padding: "20px 0", color: "var(--text2)" }}>Loading your previous rating...</div>
             ) : (
               <>
                 {existingRating && (
-                  <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#1d4ed8", marginBottom: 20 }}>
-                    You rated this helper <strong>{existingRating.rating} / 5</strong> before. Submitting will update it.
+                  <div style={{ background: "rgba(215,226,223,0.72)", border: "1px solid rgba(48,78,87,0.18)", borderRadius: 16, padding: "12px 14px", fontSize: 13, color: "var(--accent)", marginBottom: 18, lineHeight: 1.6 }}>
+                    You rated this helper <strong>{existingRating.rating} / 5</strong> before. Submitting now will update it.
                   </div>
                 )}
 
-                <div style={{ textAlign: "center", marginBottom: 8 }}>
-                  <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 8 }}>
+                <div style={{ textAlign: "center", marginBottom: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 10 }}>
                     {[1, 2, 3, 4, 5].map((i) => (
                       <span
                         key={i}
@@ -146,9 +155,9 @@ const RatingModal = ({ helper, user, onClose, onRated }) => {
                         style={{
                           fontSize: 40,
                           cursor: "pointer",
-                          color: i <= activeVal ? "#f59e0b" : "#e2e8f0",
-                          transition: "all 0.15s",
-                          transform: i <= activeVal ? "scale(1.15)" : "scale(1)",
+                          color: i <= activeVal ? "var(--gold)" : "rgba(201,178,149,0.58)",
+                          transition: "transform 0.15s ease, color 0.15s ease",
+                          transform: i <= activeVal ? "scale(1.12)" : "scale(1)",
                           display: "inline-block",
                           lineHeight: 1,
                         }}
@@ -157,21 +166,29 @@ const RatingModal = ({ helper, user, onClose, onRated }) => {
                       </span>
                     ))}
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: activeVal ? "#f59e0b" : "#94a3b8", minHeight: 20, transition: "all 0.15s" }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: activeVal ? "var(--brand-dark)" : "var(--text3)", minHeight: 22 }}>
                     {activeVal ? starLabel[activeVal] : "Tap a star to rate"}
                   </div>
                 </div>
 
-                <div style={{ marginBottom: 20, marginTop: 20 }}>
-                  <label style={{ display: "block", color: "#475569", fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
-                    Write a review <span style={{ color: "#94a3b8", fontWeight: 400 }}>(optional)</span>
+                <div style={{ marginTop: 18 }}>
+                  <label style={{ display: "block", color: "var(--text2)", fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
+                    Write a review <span style={{ color: "var(--text3)", fontWeight: 500 }}>(optional)</span>
                   </label>
-                  <textarea className="input-field" rows={3} placeholder="Share your experience with this helper..." value={review} onChange={(e) => setReview(e.target.value)} maxLength={300} style={{ resize: "none" }} />
-                  <div style={{ textAlign: "right", fontSize: 12, color: "#94a3b8", marginTop: 4 }}>{review.length}/300</div>
+                  <textarea
+                    className="input-field"
+                    rows={4}
+                    placeholder="Share your experience with this helper..."
+                    value={review}
+                    onChange={(e) => setReview(e.target.value)}
+                    maxLength={300}
+                    style={{ resize: "none" }}
+                  />
+                  <div style={{ textAlign: "right", fontSize: 12, color: "var(--text3)", marginTop: 5 }}>{review.length}/300</div>
                 </div>
 
                 {error && (
-                  <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#dc2626", marginBottom: 16 }}>
+                  <div style={{ background: "rgba(248,231,228,0.9)", border: "1px solid rgba(182,84,69,0.18)", borderRadius: 14, padding: "11px 14px", fontSize: 13, color: "var(--red)", marginTop: 14 }}>
                     {error}
                   </div>
                 )}
@@ -179,22 +196,17 @@ const RatingModal = ({ helper, user, onClose, onRated }) => {
                 <button
                   onClick={handleSubmit}
                   disabled={loading || !selected}
+                  className={selected && !loading ? "btn-primary" : "btn-outline"}
                   style={{
                     width: "100%",
-                    padding: "13px",
-                    borderRadius: 50,
-                    border: "none",
-                    background: !selected || loading ? "#e2e8f0" : "linear-gradient(135deg, #2563eb, #7c3aed)",
-                    color: !selected || loading ? "#94a3b8" : "#fff",
-                    fontFamily: "DM Sans, sans-serif",
-                    fontWeight: 700,
+                    marginTop: 18,
+                    padding: "13px 16px",
                     fontSize: 15,
+                    opacity: !selected || loading ? 0.7 : 1,
                     cursor: !selected || loading ? "not-allowed" : "pointer",
-                    transition: "all 0.2s",
-                    boxShadow: selected && !loading ? "0 4px 14px rgba(37,99,235,0.3)" : "none",
                   }}
                 >
-                  {loading ? "Submitting..." : existingRating ? "Update Rating" : "Submit Rating"}
+                  {loading ? "Submitting..." : existingRating ? "Update rating" : "Submit rating"}
                 </button>
               </>
             )}

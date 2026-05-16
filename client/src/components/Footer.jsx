@@ -1,132 +1,70 @@
-// client/src/components/Footer.jsx
-
 const Footer = ({ setPage }) => (
-  <footer
-    style={{
-      background: "var(--surface)",
-      borderTop: "1px solid var(--border)",
-      padding: "40px 24px",
-    }}
-  >
+  <footer style={{ padding: "36px 24px 48px" }}>
     <div
+      className="glass"
       style={{
-        maxWidth: 1100,
+        maxWidth: 1220,
         margin: "0 auto",
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-        gap: 32,
+        borderRadius: 32,
+        padding: "34px 30px 22px",
+        background: "linear-gradient(160deg, rgba(16,42,67,0.98), rgba(74,101,114,0.92))",
+        border: "1px solid rgba(255,255,255,0.08)",
       }}
     >
-      {/* Brand */}
-      <div>
-        <div
-          style={{
-            fontFamily: "Syne",
-            fontWeight: 800,
-            fontSize: 22,
-            marginBottom: 12,
-          }}
-        >
-          Ghar<span className="gradient-text">Seva</span>
-        </div>
-        <p style={{ color: "var(--text2)", fontSize: 14, lineHeight: 1.7 }}>
-          Connecting bachelors & working professionals with reliable domestic
-          helpers across India.
-        </p>
-      </div>
-
-      {/* Platform links */}
-      <div>
-        <div
-          style={{
-            fontWeight: 700,
-            marginBottom: 12,
-            color: "var(--text2)",
-            fontSize: 13,
-            letterSpacing: "0.5px",
-          }}
-        >
-          PLATFORM
-        </div>
-        {["Find Help", "Register as Helper", "How it Works"].map((l) => (
-          <div
-            key={l}
-            style={{
-              color: "var(--text2)",
-              fontSize: 14,
-              marginBottom: 8,
-              cursor: "pointer",
-            }}
-            onClick={() =>
-              setPage(l === "Find Help" ? "browse" : "register")
-            }
-          >
-            {l}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 28 }}>
+        <div>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 700, marginBottom: 10, color: "#ffffff" }}>
+            Ghar<span style={{ color: "#72d7c5" }}>Seva</span>
           </div>
-        ))}
-      </div>
-
-      {/* Cities */}
-      <div>
-        <div
-          style={{
-            fontWeight: 700,
-            marginBottom: 12,
-            color: "var(--text2)",
-            fontSize: 13,
-            letterSpacing: "0.5px",
-          }}
-        >
-          CITIES
+          <p style={{ color: "rgba(255,255,255,0.78)", maxWidth: 320, fontSize: 14, lineHeight: 1.8 }}>
+            Beautifully simple hiring for maids, cooks, and cleaners with a calm, trustworthy experience for families and helpers alike.
+          </p>
         </div>
-        {["Indore", "Bhopal", "Delhi", "Coming Soon: Mumbai"].map((c) => (
-          <div
-            key={c}
-            style={{ color: "var(--text2)", fontSize: 14, marginBottom: 8 }}
-          >
-            {c}
+
+        <div>
+          <div style={{ color: "rgba(255,255,255,0.58)", fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>
+            Explore
           </div>
-        ))}
+          {[
+            ["Find Helpers", "browse"],
+            ["Register Helper", "register"],
+            ["Admin Access", "admin"],
+            ["Home", "home"],
+          ].map(([label, target]) => (
+            <div key={label} style={{ marginBottom: 10, color: "rgba(255,255,255,0.82)", cursor: "pointer", fontWeight: 600 }} onClick={() => setPage(target)}>
+              {label}
+            </div>
+          ))}
+        </div>
+
+        <div>
+          <div style={{ color: "rgba(255,255,255,0.58)", fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>
+            Cities
+          </div>
+          {[
+            "Indore",
+            "Bhopal",
+            "Delhi",
+            "Mumbai soon",
+          ].map((city) => (
+            <div key={city} style={{ marginBottom: 10, color: "rgba(255,255,255,0.82)", fontWeight: 600 }}>{city}</div>
+          ))}
+        </div>
+
+        <div>
+          <div style={{ color: "rgba(255,255,255,0.58)", fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>
+            Contact
+          </div>
+          <div style={{ color: "rgba(255,255,255,0.82)", marginBottom: 10, fontWeight: 600 }}>hello@gharseva.in</div>
+          <div style={{ color: "rgba(255,255,255,0.82)", marginBottom: 10, fontWeight: 600 }}>+91 9876 543210</div>
+          <div style={{ color: "rgba(255,255,255,0.82)", fontWeight: 600 }}>Indore, Madhya Pradesh</div>
+        </div>
       </div>
 
-      {/* Contact */}
-      <div>
-        <div
-          style={{
-            fontWeight: 700,
-            marginBottom: 12,
-            color: "var(--text2)",
-            fontSize: 13,
-            letterSpacing: "0.5px",
-          }}
-        >
-          CONTACT
-        </div>
-        <div style={{ color: "var(--text2)", fontSize: 14, marginBottom: 8 }}>
-          📧 hello@gharseva.in
-        </div>
-        <div style={{ color: "var(--text2)", fontSize: 14, marginBottom: 8 }}>
-          📞 +91 9876 543210
-        </div>
-        <div style={{ color: "var(--text2)", fontSize: 14 }}>
-          🏙️ Indore, Madhya Pradesh
-        </div>
+      <div style={{ borderTop: "1px solid rgba(255,255,255,0.12)", marginTop: 28, paddingTop: 18, display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", color: "rgba(255,255,255,0.6)", fontSize: 13, fontWeight: 700 }}>
+        <span>2026 GharSeva</span>
+        <span>Designed for clarity, warmth, and trust.</span>
       </div>
-    </div>
-
-    {/* Bottom strip */}
-    <div
-      style={{
-        maxWidth: 1100,
-        margin: "32px auto 0",
-        borderTop: "1px solid var(--border)",
-        paddingTop: 24,
-        textAlign: "center",
-        color: "var(--text3)",
-        fontSize: 13,
-      }}
-    >
-      © 2024 GharSeva. Made with ❤️ for bachelors across India.
     </div>
   </footer>
 );
