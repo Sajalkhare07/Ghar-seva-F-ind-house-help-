@@ -5,17 +5,17 @@ import { openPdfDocument } from "../utils/document";
 
 const statusStyle = (status) => {
   const map = {
-    pending: { bg: "rgba(199,146,62,0.16)", color: "#9a6d1d", label: "Pending" },
-    accepted: { bg: "rgba(80,115,95,0.14)", color: "#3f6552", label: "Accepted" },
+    pending: { bg: "rgba(74,101,114,0.14)", color: "#4A6572", label: "Pending" },
+    accepted: { bg: "rgba(27,156,133,0.14)", color: "#167c6a", label: "Accepted" },
     rejected: { bg: "rgba(182,84,69,0.14)", color: "#9f4336", label: "Rejected" },
-    completed: { bg: "rgba(48,78,87,0.14)", color: "#2f515b", label: "Completed" },
+    completed: { bg: "rgba(16,42,67,0.12)", color: "#102A43", label: "Completed" },
   };
   return map[status] || map.pending;
 };
 
 const verificationStyles = {
-  pending: { bg: "rgba(199,146,62,0.16)", color: "#9a6d1d", label: "Pending admin review" },
-  approved: { bg: "rgba(80,115,95,0.14)", color: "#3f6552", label: "Approved and live" },
+  pending: { bg: "rgba(74,101,114,0.14)", color: "#4A6572", label: "Pending admin review" },
+  approved: { bg: "rgba(27,156,133,0.14)", color: "#167c6a", label: "Approved and live" },
   rejected: { bg: "rgba(182,84,69,0.14)", color: "#9f4336", label: "Changes requested" },
 };
 
@@ -23,14 +23,14 @@ const panelStyle = {
   borderRadius: 26,
   border: "1px solid rgba(74,101,114,0.18)",
   background: "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(243,247,249,0.96))",
-  boxShadow: "0 20px 50px rgba(61,37,23,0.08)",
+  boxShadow: "0 20px 50px rgba(16,42,67,0.08)",
 };
 
 const statTile = {
   padding: "16px 18px",
   borderRadius: 20,
-  background: "rgba(255,255,255,0.9)",
-  border: "1px solid rgba(221,206,185,0.8)",
+  background: "rgba(255,255,255,0.92)",
+  border: "1px solid rgba(74,101,114,0.16)",
 };
 
 const tabButton = (active) => ({
@@ -45,8 +45,19 @@ const tabButton = (active) => ({
   letterSpacing: "0.02em",
 });
 
+const EmptyState = ({ tag, title, text, actionLabel, onAction }) => (
+  <div style={{ ...panelStyle, padding: "46px 24px", textAlign: "center" }}>
+    <div className="tag tag-blue" style={{ margin: "0 auto 14px", width: "fit-content" }}>{tag}</div>
+    <h3 style={{ fontSize: 30, marginBottom: 10 }}>{title}</h3>
+    <p style={{ color: "var(--text2)", maxWidth: 600, margin: "0 auto", lineHeight: 1.8, marginBottom: actionLabel ? 18 : 0 }}>
+      {text}
+    </p>
+    {actionLabel && <button type="button" className="btn-primary" onClick={onAction}>{actionLabel}</button>}
+  </div>
+);
+
 const HelperDashboardPage = ({ user, setPage, showToast }) => {
-  const [tab, setTab] = useState("incoming");
+  const [tab, setTab] = useState("overview");
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState(null);
@@ -91,19 +102,69 @@ const HelperDashboardPage = ({ user, setPage, showToast }) => {
   }, []);
 
   useEffect(() => {
-    if (tab === "incoming" && profile?.verificationStatus === "approved") {
+    if (profile?.verificationStatus === "approved") {
       loadIncoming();
     }
-  }, [tab, profile]);
+  }, [profile?.verificationStatus]);
 
-  const stats = useMemo(() => {
-    const pending = incoming.filter((booking) => booking.status === "pending").length;
-    const active = incoming.filter((booking) => booking.status === "accepted").length;
-    const done = incoming.filter((booking) => booking.status === "completed").length;
-    return { pending, active, done };
+  const requestGroups = useMemo(() => {
+    const newRequests = incoming.filter((booking) => booking.status === "pending");
+    const active = incoming.filter((booking) => booking.status === "accepted");
+    const history = incoming.filter((booking) => ["rejected", "completed"].includes(booking.status));
+    return { newRequests, active, history };
   }, [incoming]);
 
   const verification = verificationStyles[profile?.verificationStatus || "pending"];
+
+  const nextStep = useMemo(() => {
+    if (!profile) {
+      return {
+        label: "Start here",
+        title: "Complete your helper verification",
+        text: "Add your work details, live photo, and documents so the admin can review your listing.",
+        actionLabel: "Complete verification",
+        action: () => setPage("register"),
+      };
+    }
+
+    if (profile.verificationStatus === "pending") {
+      return {
+        label: "Waiting for review",
+        title: "Your profile is with the admin team",
+        text: "No extra action is needed right now. Keep your phone available in case the admin needs clarification.",
+        actionLabel: "View documents",
+        action: () => setTab("documents"),
+      };
+    }
+
+    if (profile.verificationStatus === "rejected") {
+      return {
+        label: "Needs changes",
+        title: "Update your profile and resubmit",
+        text: profile.approvalNotes || "The admin requested changes before your listing can go live again.",
+        actionLabel: "Edit profile",
+        action: () => setPage("register"),
+      };
+    }
+
+    if (requestGroups.newRequests.length) {
+      return {
+        label: "Action needed",
+        title: `You have ${requestGroups.newRequests.length} new booking request${requestGroups.newRequests.length > 1 ? "s" : ""}`,
+        text: "Review pending household requests and accept the ones you want to take on.",
+        actionLabel: "Open requests",
+        action: () => setTab("requests"),
+      };
+    }
+
+    return {
+      label: "Profile live",
+      title: "Your listing is approved and visible",
+      text: "Keep your details updated and stay ready for new household requests.",
+      actionLabel: "View profile",
+      action: () => setTab("overview"),
+    };
+  }, [profile, requestGroups.newRequests.length, setPage]);
 
   const handleStatus = async (bookingId, status) => {
     setActionId(String(bookingId));
@@ -125,6 +186,60 @@ const HelperDashboardPage = ({ user, setPage, showToast }) => {
     }
   };
 
+  const renderRequestList = (bookings) => (
+    <div style={{ display: "grid", gap: 14 }}>
+      {bookings.map((booking) => {
+        const status = statusStyle(booking.status);
+        const busy = actionId === String(booking._id);
+        return (
+          <div key={String(booking._id)} style={{ ...panelStyle, padding: 22 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div>
+                <div className="tag tag-blue" style={{ marginBottom: 10 }}>Household request</div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 28, color: "var(--text)" }}>
+                  {booking.user?.name || "Customer"}
+                </div>
+                <div style={{ color: "var(--text2)", fontSize: 14, marginTop: 6 }}>{booking.user?.email}</div>
+              </div>
+              <span style={{ padding: "8px 13px", borderRadius: 999, background: status.bg, color: status.color, fontWeight: 800, fontSize: 12 }}>
+                {status.label}
+              </span>
+            </div>
+
+            {booking.message && <p style={{ marginTop: 14, fontSize: 14, color: "var(--text)", lineHeight: 1.75 }}>{booking.message}</p>}
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginTop: 16 }}>
+              <div style={statTile}>
+                <div style={{ color: "var(--text3)", fontSize: 12, marginBottom: 6 }}>Preferred start</div>
+                <div style={{ fontWeight: 800, color: "var(--text)" }}>
+                  {booking.startDate ? new Date(booking.startDate).toLocaleDateString() : "Flexible"}
+                </div>
+              </div>
+              <div style={statTile}>
+                <div style={{ color: "var(--text3)", fontSize: 12, marginBottom: 6 }}>Budget</div>
+                <div style={{ fontWeight: 800, color: "var(--text)" }}>
+                  {booking.monthlyBudget != null ? `Rs.${Number(booking.monthlyBudget).toLocaleString()}/mo` : "Not specified"}
+                </div>
+              </div>
+            </div>
+
+            {booking.status === "pending" && (
+              <div style={{ display: "flex", gap: 10, marginTop: 18, flexWrap: "wrap" }}>
+                <button type="button" className="btn-primary" disabled={busy} onClick={() => handleStatus(booking._id, "accepted")}>Accept request</button>
+                <button type="button" className="btn-outline" disabled={busy} onClick={() => handleStatus(booking._id, "rejected")}>Decline</button>
+              </div>
+            )}
+            {booking.status === "accepted" && (
+              <button type="button" className="btn-outline" disabled={busy} style={{ marginTop: 18 }} onClick={() => handleStatus(booking._id, "completed")}>
+                Mark completed
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
   return (
     <div className="page-content" style={{ paddingTop: 88, minHeight: "100vh" }}>
       <div style={{ maxWidth: 1140, margin: "0 auto", padding: "28px 24px 70px" }}>
@@ -138,7 +253,7 @@ const HelperDashboardPage = ({ user, setPage, showToast }) => {
                   Welcome back, {user.name}
                 </h1>
                 <p style={{ color: "var(--text2)", lineHeight: 1.75, fontSize: 15, maxWidth: 700 }}>
-                  Manage your listing, keep an eye on approval progress, and respond to incoming household requests once your profile is live.
+                  See your next step immediately, track household requests cleanly, and keep your listing ready for work.
                 </p>
                 <p style={{ color: "var(--text3)", fontSize: 13, marginTop: 8 }}>{user.email}</p>
               </div>
@@ -156,12 +271,12 @@ const HelperDashboardPage = ({ user, setPage, showToast }) => {
             </div>
           </div>
 
-          {!profileLoading && profile && (
+          {profile && (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginTop: 22 }}>
               {[
-                ["Pending jobs", stats.pending, "var(--gold)"],
-                ["Active jobs", stats.active, "var(--green)"],
-                ["Completed", stats.done, "var(--accent)"],
+                ["New requests", requestGroups.newRequests.length, "var(--brand-dark)"],
+                ["Active jobs", requestGroups.active.length, "var(--accent)"],
+                ["Completed history", requestGroups.history.length, "var(--text2)"],
               ].map(([label, value, tone]) => (
                 <div key={label} style={statTile}>
                   <div style={{ color: "var(--text3)", fontSize: 12, marginBottom: 6 }}>{label}</div>
@@ -173,16 +288,13 @@ const HelperDashboardPage = ({ user, setPage, showToast }) => {
         </div>
 
         {!profileLoading && profileError === "no_profile" && (
-          <div style={{ ...panelStyle, padding: 28, marginBottom: 22 }}>
-            <div className="tag tag-orange" style={{ marginBottom: 14 }}>Verification needed</div>
-            <h2 style={{ fontSize: 30, marginBottom: 10 }}>Complete your helper profile first</h2>
-            <p style={{ color: "var(--text2)", lineHeight: 1.8, fontSize: 15, maxWidth: 640, marginBottom: 18 }}>
-              Add your work details, Aadhaar, live photo, and supporting documents. Your listing stays hidden until an admin approves it.
-            </p>
-            <button type="button" className="btn-primary" onClick={() => setPage("register")}>
-              Complete my verification profile
-            </button>
-          </div>
+          <EmptyState
+            tag="Verification needed"
+            title="Complete your helper profile first"
+            text="Add your work details, Aadhaar, live photo, and supporting documents. Your listing stays hidden until an admin approves it."
+            actionLabel="Complete my verification profile"
+            onAction={() => setPage("register")}
+          />
         )}
 
         {profileLoading && <div style={{ ...panelStyle, padding: 24, marginBottom: 22, color: "var(--text2)" }}>Loading your workspace...</div>}
@@ -195,11 +307,22 @@ const HelperDashboardPage = ({ user, setPage, showToast }) => {
 
         {profile && (
           <>
-            <div style={{ display: "inline-flex", gap: 6, padding: 6, borderRadius: 999, border: "1px solid rgba(74,101,114,0.18)", background: "rgba(255,250,244,0.78)", marginBottom: 22, flexWrap: "wrap" }}>
+            <div style={{ ...panelStyle, padding: 24, marginBottom: 22 }}>
+              <div className="tag tag-green" style={{ marginBottom: 12 }}>{nextStep.label}</div>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
+                <div>
+                  <h2 style={{ fontSize: 30, marginBottom: 8 }}>{nextStep.title}</h2>
+                  <p style={{ color: "var(--text2)", lineHeight: 1.75, maxWidth: 640 }}>{nextStep.text}</p>
+                </div>
+                <button type="button" className="btn-primary" onClick={nextStep.action}>{nextStep.actionLabel}</button>
+              </div>
+            </div>
+
+            <div style={{ display: "inline-flex", gap: 6, padding: 6, borderRadius: 999, border: "1px solid rgba(74,101,114,0.18)", background: "rgba(255,255,255,0.85)", marginBottom: 22, flexWrap: "wrap" }}>
               {[
-                ["incoming", "Incoming requests"],
-                ["listing", "My profile"],
-                ["documents", "Verification docs"],
+                ["overview", "Overview"],
+                ["requests", "Requests"],
+                ["documents", "Documents"],
               ].map(([value, label]) => (
                 <button key={value} type="button" onClick={() => setTab(value)} style={tabButton(tab === value)}>
                   {label}
@@ -207,37 +330,35 @@ const HelperDashboardPage = ({ user, setPage, showToast }) => {
               ))}
             </div>
 
-            {tab === "listing" && (
-              <div style={{ ...panelStyle, padding: 24 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(240px, 0.42fr)", gap: 18 }}>
-                  <div>
-                    <div className="tag tag-purple" style={{ marginBottom: 12 }}>Approval ready profile</div>
-                    <h3 style={{ fontSize: 30, marginBottom: 14 }}>{profile.name}</h3>
-                    <div style={{ display: "grid", gap: 12, fontSize: 15, color: "var(--text)" }}>
-                      <div><span style={{ color: "var(--text3)", fontSize: 12 }}>Service and city</span><div>{profile.service} in {profile.area}, {profile.city}</div></div>
-                      <div><span style={{ color: "var(--text3)", fontSize: 12 }}>Monthly rate</span><div style={{ fontWeight: 800 }}>Rs.{Number(profile.price).toLocaleString()}/mo</div></div>
-                      <div><span style={{ color: "var(--text3)", fontSize: 12 }}>Phone</span><div>{profile.phone}</div></div>
-                      <div><span style={{ color: "var(--text3)", fontSize: 12 }}>Verification status</span><div style={{ color: verification.color, fontWeight: 800 }}>{verification.label}</div></div>
-                      {profile.about && <div><span style={{ color: "var(--text3)", fontSize: 12 }}>About</span><p style={{ lineHeight: 1.7, marginTop: 4 }}>{profile.about}</p></div>}
-                    </div>
-                    <button type="button" className="btn-outline" style={{ marginTop: 18 }} onClick={() => setPage("register")}>Submit a revised profile</button>
+            {tab === "overview" && (
+              <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(240px, 0.42fr)", gap: 18 }}>
+                <div style={{ ...panelStyle, padding: 24 }}>
+                  <div className="tag tag-purple" style={{ marginBottom: 12 }}>Listing overview</div>
+                  <h3 style={{ fontSize: 30, marginBottom: 14 }}>{profile.name}</h3>
+                  <div style={{ display: "grid", gap: 12, fontSize: 15, color: "var(--text)" }}>
+                    <div><span style={{ color: "var(--text3)", fontSize: 12 }}>Service and city</span><div>{profile.service} in {profile.area}, {profile.city}</div></div>
+                    <div><span style={{ color: "var(--text3)", fontSize: 12 }}>Monthly rate</span><div style={{ fontWeight: 800 }}>Rs.{Number(profile.price).toLocaleString()}/mo</div></div>
+                    <div><span style={{ color: "var(--text3)", fontSize: 12 }}>Phone</span><div>{profile.phone}</div></div>
+                    <div><span style={{ color: "var(--text3)", fontSize: 12 }}>Verification status</span><div style={{ color: verification.color, fontWeight: 800 }}>{verification.label}</div></div>
+                    {profile.about && <div><span style={{ color: "var(--text3)", fontSize: 12 }}>About</span><p style={{ lineHeight: 1.7, marginTop: 4 }}>{profile.about}</p></div>}
                   </div>
-                  <div style={{ ...statTile, alignSelf: "start" }}>
-                    <div style={{ color: "var(--text3)", fontSize: 12, marginBottom: 8 }}>Live photo</div>
-                    {profile.livePhoto ? (
-                      <img src={profile.livePhoto} alt={profile.name} style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", borderRadius: 22, border: "1px solid rgba(74,101,114,0.16)" }} />
-                    ) : (
-                      <div style={{ borderRadius: 22, aspectRatio: "1 / 1", display: "grid", placeItems: "center", background: "var(--surface-soft)", color: "var(--text3)" }}>No live photo</div>
-                    )}
-                  </div>
+                  <button type="button" className="btn-outline" style={{ marginTop: 18 }} onClick={() => setPage("register")}>Edit and resubmit profile</button>
+                </div>
+                <div style={statTile}>
+                  <div style={{ color: "var(--text3)", fontSize: 12, marginBottom: 8 }}>Live photo</div>
+                  {profile.livePhoto ? (
+                    <img src={profile.livePhoto} alt={profile.name} style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", borderRadius: 22, border: "1px solid rgba(74,101,114,0.16)" }} />
+                  ) : (
+                    <div style={{ borderRadius: 22, aspectRatio: "1 / 1", display: "grid", placeItems: "center", background: "var(--surface-soft)", color: "var(--text3)" }}>No live photo</div>
+                  )}
                 </div>
               </div>
             )}
 
             {tab === "documents" && (
               <div style={{ ...panelStyle, padding: 24 }}>
-                <div className="tag tag-blue" style={{ marginBottom: 12 }}>Documents under review</div>
-                <h3 style={{ fontSize: 30, marginBottom: 16 }}>Verification documents</h3>
+                <div className="tag tag-blue" style={{ marginBottom: 12 }}>Verification docs</div>
+                <h3 style={{ fontSize: 30, marginBottom: 16 }}>Documents ready for review</h3>
                 <div style={{ display: "grid", gap: 12 }}>
                   {(profile.verificationDocuments || []).map((doc) => (
                     <div key={`${doc.type}-${doc.documentNumber}`} style={{ display: "flex", justifyContent: "space-between", gap: 14, flexWrap: "wrap", border: "1px solid rgba(74,101,114,0.16)", borderRadius: 20, padding: 18, background: "rgba(255,255,255,0.92)" }}>
@@ -266,76 +387,37 @@ const HelperDashboardPage = ({ user, setPage, showToast }) => {
               </div>
             )}
 
-            {tab === "incoming" && (
+            {tab === "requests" && (
               profile.verificationStatus !== "approved" ? (
-                <div style={{ ...panelStyle, padding: "46px 24px", textAlign: "center" }}>
-                  <div className="tag tag-orange" style={{ margin: "0 auto 14px", width: "fit-content" }}>Pending approval</div>
-                  <h3 style={{ fontSize: 30, marginBottom: 10 }}>Incoming work unlocks after approval</h3>
-                  <p style={{ color: "var(--text2)", maxWidth: 600, margin: "0 auto", lineHeight: 1.8 }}>
-                    Families cannot see your listing yet. Once the admin approves your helper profile, booking requests will start appearing here.
-                  </p>
-                </div>
+                <EmptyState
+                  tag="Pending approval"
+                  title="Incoming work unlocks after approval"
+                  text="Families cannot see your listing yet. Once the admin approves your helper profile, booking requests will start appearing here."
+                />
               ) : incomingLoading ? (
                 <div style={{ ...panelStyle, padding: 24, color: "var(--text2)" }}>Loading requests...</div>
-              ) : incoming.length === 0 ? (
-                <div style={{ ...panelStyle, padding: "46px 24px", textAlign: "center" }}>
-                  <div className="tag tag-green" style={{ margin: "0 auto 14px", width: "fit-content" }}>Profile is live</div>
-                  <h3 style={{ fontSize: 30, marginBottom: 10 }}>No requests yet</h3>
-                  <p style={{ color: "var(--text2)", lineHeight: 1.8, maxWidth: 560, margin: "0 auto" }}>
-                    Your approved profile is now visible. When a family sends a request, you will see it here.
-                  </p>
-                </div>
               ) : (
-                <div style={{ display: "grid", gap: 14 }}>
-                  {incoming.map((booking) => {
-                    const status = statusStyle(booking.status);
-                    const busy = actionId === String(booking._id);
-                    return (
-                      <div key={String(booking._id)} style={{ ...panelStyle, padding: 22 }}>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between", alignItems: "flex-start" }}>
-                          <div>
-                            <div className="tag tag-blue" style={{ marginBottom: 10 }}>Household request</div>
-                            <div style={{ fontFamily: "var(--font-display)", fontSize: 28, color: "var(--text)" }}>
-                              {booking.user?.name || "Customer"}
-                            </div>
-                            <div style={{ color: "var(--text2)", fontSize: 14, marginTop: 6 }}>{booking.user?.email}</div>
-                          </div>
-                          <span style={{ padding: "8px 13px", borderRadius: 999, background: status.bg, color: status.color, fontWeight: 800, fontSize: 12 }}>
-                            {status.label}
-                          </span>
-                        </div>
+                <div style={{ display: "grid", gap: 22 }}>
+                  <div>
+                    <div className="tag tag-blue" style={{ marginBottom: 12 }}>New requests</div>
+                    {requestGroups.newRequests.length ? renderRequestList(requestGroups.newRequests) : (
+                      <EmptyState tag="No new requests" title="Nothing new has come in" text="When a household sends a new request, it will appear here first." />
+                    )}
+                  </div>
 
-                        {booking.message && <p style={{ marginTop: 14, fontSize: 14, color: "var(--text)", lineHeight: 1.75 }}>{booking.message}</p>}
+                  <div>
+                    <div className="tag tag-green" style={{ marginBottom: 12 }}>Active jobs</div>
+                    {requestGroups.active.length ? renderRequestList(requestGroups.active) : (
+                      <EmptyState tag="No active jobs" title="No accepted work in progress" text="Accepted household jobs will stay here until you mark them completed." />
+                    )}
+                  </div>
 
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginTop: 16 }}>
-                          <div style={statTile}>
-                            <div style={{ color: "var(--text3)", fontSize: 12, marginBottom: 6 }}>Preferred start</div>
-                            <div style={{ fontWeight: 800, color: "var(--text)" }}>
-                              {booking.startDate ? new Date(booking.startDate).toLocaleDateString() : "Flexible"}
-                            </div>
-                          </div>
-                          <div style={statTile}>
-                            <div style={{ color: "var(--text3)", fontSize: 12, marginBottom: 6 }}>Budget</div>
-                            <div style={{ fontWeight: 800, color: "var(--text)" }}>
-                              {booking.monthlyBudget != null ? `Rs.${Number(booking.monthlyBudget).toLocaleString()}/mo` : "Not specified"}
-                            </div>
-                          </div>
-                        </div>
-
-                        {booking.status === "pending" && (
-                          <div style={{ display: "flex", gap: 10, marginTop: 18, flexWrap: "wrap" }}>
-                            <button type="button" className="btn-primary" disabled={busy} onClick={() => handleStatus(booking._id, "accepted")}>Accept request</button>
-                            <button type="button" className="btn-outline" disabled={busy} onClick={() => handleStatus(booking._id, "rejected")}>Decline</button>
-                          </div>
-                        )}
-                        {booking.status === "accepted" && (
-                          <button type="button" className="btn-outline" disabled={busy} style={{ marginTop: 18 }} onClick={() => handleStatus(booking._id, "completed")}>
-                            Mark completed
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
+                  <div>
+                    <div className="tag tag-purple" style={{ marginBottom: 12 }}>Request history</div>
+                    {requestGroups.history.length ? renderRequestList(requestGroups.history) : (
+                      <EmptyState tag="No history yet" title="Past request decisions will appear here" text="Completed and declined requests are grouped here so your active flow stays cleaner." />
+                    )}
+                  </div>
                 </div>
               )
             )}
