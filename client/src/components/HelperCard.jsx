@@ -72,14 +72,7 @@ const HelperCard = ({ helper, onView, onSave, saved, user }) => {
           <Avatar initials={helper.avatar} gradient={helper.gradient} imageUrl={helper.livePhoto} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <span
-                style={{
-                  fontFamily: "var(--font-display)",
-                  fontWeight: 700,
-                  fontSize: 21,
-                  color: "var(--text)",
-                }}
-              >
+              <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 21, color: "var(--text)" }}>
                 {helper.name}
               </span>
               {helper.verified && <span className="verified-badge">Verified</span>}
@@ -99,18 +92,7 @@ const HelperCard = ({ helper, onView, onSave, saved, user }) => {
           </div>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr auto",
-            gap: 12,
-            alignItems: "center",
-            padding: "14px 16px",
-            borderRadius: 18,
-            background: "rgba(255,255,255,0.96)",
-            border: "1px solid rgba(221,206,185,0.8)",
-          }}
-        >
+        <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 12, alignItems: "center", padding: "14px 16px", borderRadius: 18, background: "rgba(255,255,255,0.96)", border: "1px solid rgba(221,206,185,0.8)" }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <Stars rating={liveRating} />
@@ -119,7 +101,7 @@ const HelperCard = ({ helper, onView, onSave, saved, user }) => {
               </span>
             </div>
             <div style={{ color: "var(--text3)", fontSize: 12, marginTop: 6 }}>
-              Families can view this profile after admin approval.
+              Admin-approved listing with masked chat and call access.
             </div>
           </div>
           <div style={{ textAlign: "right" }}>
@@ -132,84 +114,41 @@ const HelperCard = ({ helper, onView, onSave, saved, user }) => {
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div
-              style={{
-                width: 10,
-                height: 10,
-                borderRadius: "50%",
-                background: helper.available ? "var(--green)" : "var(--red)",
-                boxShadow: helper.available ? "0 0 0 5px rgba(80,115,95,0.14)" : "0 0 0 5px rgba(182,84,69,0.12)",
-              }}
-            />
+            <div style={{ width: 10, height: 10, borderRadius: "50%", background: helper.available ? "var(--green)" : "var(--red)", boxShadow: helper.available ? "0 0 0 5px rgba(80,115,95,0.14)" : "0 0 0 5px rgba(182,84,69,0.12)" }} />
             <span style={{ fontSize: 13, fontWeight: 700, color: helper.available ? "var(--green)" : "var(--red)" }}>
               {helper.available ? "Available now" : "Currently busy"}
             </span>
           </div>
           <div style={{ color: "var(--text3)", fontSize: 12 }}>
-            {helper.phone ? `Call: ${helper.phone}` : ""}
+            {helper.maskedContact?.voice || "Masked calling after login"}
           </div>
         </div>
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button
-            className="btn-primary"
-            style={{ flex: 1, minWidth: 150, padding: "12px 14px", fontSize: 13 }}
-            onClick={() => onView(helper)}
-          >
-            View full profile
+          <button className="btn-primary" style={{ flex: 1, minWidth: 150, padding: "12px 14px", fontSize: 13 }} onClick={() => onView(helper)}>
+            View profile
           </button>
 
           {user ? (
-            <button
-              onClick={() => setShowRating(true)}
-              title="Rate this helper"
-              style={iconButtonStyle}
-            >
+            <button onClick={() => setShowRating(true)} title="Rate this helper" style={iconButtonStyle}>
               Rate
             </button>
           ) : (
-            <button
-              title="Login to rate"
-              style={{
-                ...iconButtonStyle,
-                border: "1px solid rgba(201,178,149,0.48)",
-                background: "rgba(239,229,217,0.6)",
-                color: "var(--text3)",
-                cursor: "not-allowed",
-              }}
-            >
+            <button title="Login to rate" style={{ ...iconButtonStyle, border: "1px solid rgba(201,178,149,0.48)", background: "rgba(239,229,217,0.6)", color: "var(--text3)", cursor: "not-allowed" }}>
               Rate
             </button>
           )}
 
           <button
             onClick={() => onSave(helper.id || helper._id)}
-            style={{
-              minWidth: 92,
-              padding: "11px 16px",
-              borderRadius: 999,
-              border: saved ? "1px solid rgba(164,76,52,0.34)" : "1px solid rgba(74,101,114,0.18)",
-              background: saved ? "rgba(164,76,52,0.12)" : "rgba(255,250,244,0.92)",
-              color: saved ? "var(--brand-dark)" : "var(--text2)",
-              cursor: "pointer",
-              fontSize: 13,
-              fontWeight: 800,
-              letterSpacing: "0.01em",
-            }}
+            style={{ minWidth: 92, padding: "11px 16px", borderRadius: 999, border: saved ? "1px solid rgba(164,76,52,0.34)" : "1px solid rgba(74,101,114,0.18)", background: saved ? "rgba(164,76,52,0.12)" : "rgba(255,250,244,0.92)", color: saved ? "var(--brand-dark)" : "var(--text2)", cursor: "pointer", fontSize: 13, fontWeight: 800, letterSpacing: "0.01em" }}
           >
             {saved ? "Saved" : "Save"}
           </button>
         </div>
       </div>
 
-      {showRating && (
-        <RatingModal
-          helper={helper}
-          user={user}
-          onClose={() => setShowRating(false)}
-          onRated={handleRated}
-        />
-      )}
+      {showRating && <RatingModal helper={helper} user={user} onClose={() => setShowRating(false)} onRated={handleRated} />}
     </>
   );
 };

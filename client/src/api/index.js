@@ -34,6 +34,20 @@ export const getMyBookings = () => API.get("/bookings/mine");
 export const getHelperRequests = () => API.get("/bookings/helper-requests");
 export const updateBookingStatus = (id, status) =>
   API.patch(`/bookings/${id}/status`, { status });
+export const sendBookingMessage = (id, text) =>
+  API.post(`/bookings/${id}/messages`, { text });
+export const requestBookingCall = (id, note) =>
+  API.post(`/bookings/${id}/call-requests`, { note });
+export const updateBookingCall = (id, callId, status) =>
+  API.patch(`/bookings/${id}/call-requests/${callId}`, { status });
+export const addBookingAttendance = (id, data) =>
+  API.post(`/bookings/${id}/attendance`, data);
+export const addBookingPayment = (id, data) =>
+  API.post(`/bookings/${id}/payments`, data);
+export const addBookingWeeklyReview = (id, data) =>
+  API.post(`/bookings/${id}/weekly-reviews`, data);
+
+export const getCallToken = () => API.get("/calls/token");
 
 export const submitRating = (helperId, rating, review) =>
   API.post("/ratings", { helperId, rating, review });

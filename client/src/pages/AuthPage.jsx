@@ -14,6 +14,8 @@ const labelStyle = {
   marginBottom: 6,
 };
 
+const AUTH_PROMPT_KEY = "gharseva-auth-prompt";
+
 const AuthPage = ({ mode, setPage, onAuth }) => {
   const isAdminAccess = mode === "admin";
   const isLogin = mode === "login";
@@ -27,6 +29,7 @@ const AuthPage = ({ mode, setPage, onAuth }) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [showAdminSignup, setShowAdminSignup] = useState(false);
 
@@ -35,6 +38,14 @@ const AuthPage = ({ mode, setPage, onAuth }) => {
       setForm((current) => ({ ...current, role: "admin" }));
     }
   }, [isAdminAccess]);
+
+  useEffect(() => {
+    const prompt = sessionStorage.getItem(AUTH_PROMPT_KEY);
+    if (prompt) {
+      setNotice(prompt);
+      sessionStorage.removeItem(AUTH_PROMPT_KEY);
+    }
+  }, []);
 
   const isAdminCreate = isAdminAccess && adminTab === "create";
   const effectiveLogin = isAdminAccess ? adminTab === "login" : isLogin;
@@ -107,7 +118,7 @@ const AuthPage = ({ mode, setPage, onAuth }) => {
   const heroText = isAdminAccess
     ? "Sign in as admin to review helper profiles, verify documents, approve listings, and control the platform flow. New admin accounts can still be created only with the invite code from the server .env file."
     : effectiveLogin
-      ? "Sign in to manage saved helpers, track requests, or review profiles from the dashboard."
+      ? "Sign in to manage saved helpers, continue chat, or contact approved profiles from the dashboard."
       : `Open your ${selectedRoleLabel.toLowerCase()} account and continue with the redesigned GharSeva flow.`;
 
   const cardTitle = isAdminAccess
@@ -150,7 +161,7 @@ const AuthPage = ({ mode, setPage, onAuth }) => {
               : [
                   "Cleaner, easier to trust interface",
                   "Verified helper profiles with real photos",
-                  "Simple browsing and request flow",
+                  "Simple browsing and contact flow",
                 ]).map((point) => (
               <div key={point} style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--text2)", fontWeight: 700 }}>
                 <div style={{ width: 10, height: 10, borderRadius: 999, background: isAdminAccess ? "var(--accent)" : "var(--brand)" }} />
@@ -169,12 +180,11 @@ const AuthPage = ({ mode, setPage, onAuth }) => {
             <p style={{ color: "var(--text2)", fontSize: 15 }}>{cardSubtitle}</p>
           </div>
 
+          {notice && <div style={{ background: "rgba(225,234,231,0.84)", border: "1px solid rgba(27,156,133,0.18)", color: "var(--brand-dark)", borderRadius: 16, padding: "12px 14px", marginBottom: 16, fontWeight: 700 }}>{notice}</div>}
+
           {isAdminAccess ? (
             <div style={{ display: "inline-flex", gap: 6, padding: 6, borderRadius: 999, border: "1px solid rgba(74,101,114,0.18)", background: "rgba(255,250,244,0.78)", marginBottom: 20, flexWrap: "wrap" }}>
-              {[
-                ["login", "Existing admin"],
-                ["create", "Create with invite code"],
-              ].map(([value, label]) => (
+              {[["login", "Existing admin"], ["create", "Create with invite code"]].map(([value, label]) => (
                 <button
                   key={value}
                   type="button"
@@ -275,24 +285,15 @@ const AuthPage = ({ mode, setPage, onAuth }) => {
           <div style={{ textAlign: "center", color: "var(--text2)", fontSize: 14 }}>
             {isAdminAccess ? (
               <>
-                Looking for normal user login?{" "}
-                <span style={{ color: "var(--brand)", fontWeight: 800, cursor: "pointer" }} onClick={() => setPage("login")}>
-                  Go to sign in
-                </span>
+                Looking for normal user login? <span style={{ color: "var(--brand)", fontWeight: 800, cursor: "pointer" }} onClick={() => setPage("login")}>Go to sign in</span>
               </>
             ) : effectiveLogin ? (
               <>
-                Do not have an account?{" "}
-                <span style={{ color: "var(--brand)", fontWeight: 800, cursor: "pointer" }} onClick={() => setPage("signup")}>
-                  Sign up
-                </span>
+                Do not have an account? <span style={{ color: "var(--brand)", fontWeight: 800, cursor: "pointer" }} onClick={() => setPage("signup")}>Sign up</span>
               </>
             ) : (
               <>
-                Already have an account?{" "}
-                <span style={{ color: "var(--brand)", fontWeight: 800, cursor: "pointer" }} onClick={() => setPage("login")}>
-                  Sign in
-                </span>
+                Already have an account? <span style={{ color: "var(--brand)", fontWeight: 800, cursor: "pointer" }} onClick={() => setPage("login")}>Sign in</span>
               </>
             )}
           </div>

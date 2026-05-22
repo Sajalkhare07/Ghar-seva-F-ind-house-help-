@@ -18,6 +18,7 @@ const DashboardPage = ({ user, savedIds, onView, onSave, setPage, showToast }) =
       onView={onView}
       onSave={onSave}
       setPage={setPage}
+      showToast={showToast}
     />
   );
 };

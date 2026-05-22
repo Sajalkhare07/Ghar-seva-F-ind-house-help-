@@ -17,6 +17,11 @@ const HelperDocumentSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    documentPassword: {
+      type: String,
+      required: true,
+      trim: true,
+    },
     fileName: {
       type: String,
       default: "",
@@ -155,8 +160,14 @@ const HelperSchema = new mongoose.Schema(
       type: [HelperDocumentSchema],
       default: [],
       validate: {
-        validator: (docs) => Array.isArray(docs) && docs.length >= 3,
-        message: "At least three verification documents are required",
+        validator: (docs) =>
+          Array.isArray(docs) &&
+          docs.length === 1 &&
+          docs[0]?.type === "Aadhaar Card" &&
+          !!docs[0]?.documentNumber &&
+          !!docs[0]?.documentUrl &&
+          !!docs[0]?.documentPassword,
+        message: "Exactly one password-protected Aadhaar Card document is required",
       },
     },
     user: {

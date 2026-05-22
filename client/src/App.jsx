@@ -4,6 +4,7 @@ import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import Toast from "./components/Toast";
 import ProfileModal from "./components/ProfileModal";
+import CallPanel from "./components/CallPanel";
 
 import HomePage from "./pages/HomePage";
 import BrowsePage from "./pages/BrowsePage";
@@ -12,6 +13,7 @@ import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
 
 import { getMe, toggleSavedHelper } from "./api/index";
+import { hangupBrowserCall, subscribeToCallState } from "./utils/twilioVoice";
 
 const shapeUser = (raw) => ({
   id: String(raw?.id || raw?._id || ""),
@@ -27,6 +29,7 @@ const App = () => {
   const [selectedHelper, setSelectedHelper] = useState(null);
   const [savedIds, setSavedIds] = useState([]);
   const [toast, setToast] = useState(null);
+  const [callState, setCallState] = useState(null);
 
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
@@ -63,6 +66,26 @@ const App = () => {
           setSavedIds([]);
         }
       });
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToCallState((nextState) => {
+      setCallState(nextState);
+
+      if (nextState?.status === "error" && nextState.message) {
+        setToast({ msg: nextState.message, type: "error" });
+      }
+
+      if (["ended", "cancelled", "rejected"].includes(nextState?.status)) {
+        window.setTimeout(() => {
+          setCallState((current) =>
+            current?.status === nextState.status ? null : current
+          );
+        }, 2500);
+      }
+    });
+
+    return unsubscribe;
   }, []);
 
   const showToast = (msg, type = "success") => setToast({ msg, type });
@@ -128,14 +151,7 @@ const App = () => {
       case "home":
         return <HomePage setPage={setPage} />;
       case "browse":
-        return (
-          <BrowsePage
-            user={user}
-            onView={setSelectedHelper}
-            onSave={handleSave}
-            savedIds={savedIds}
-          />
-        );
+        return <BrowsePage user={user} onView={setSelectedHelper} onSave={handleSave} savedIds={savedIds} />;
       case "login":
         return <AuthPage mode="login" setPage={setPage} onAuth={handleAuth} />;
       case "signup":
@@ -146,14 +162,7 @@ const App = () => {
         return <RegisterPage user={user} setPage={setPage} />;
       case "dashboard":
         return user ? (
-          <DashboardPage
-            user={user}
-            savedIds={savedIds}
-            onView={setSelectedHelper}
-            onSave={handleSave}
-            setPage={setPage}
-            showToast={showToast}
-          />
+          <DashboardPage user={user} savedIds={savedIds} onView={setSelectedHelper} onSave={handleSave} setPage={setPage} showToast={showToast} />
         ) : (
           <AuthPage mode="login" setPage={setPage} onAuth={handleAuth} />
         );
@@ -176,11 +185,10 @@ const App = () => {
           saved={savedIds.map(String).includes(String(selectedHelper.id || selectedHelper._id))}
           user={user}
           setPage={setPage}
-          onBookingSuccess={() =>
-            showToast("Booking request sent! Check My booking requests in Dashboard.", "success")
-          }
+          onBookingSuccess={(msg) => showToast(msg || "Action completed.", "success")}
         />
       )}
+      <CallPanel callState={callState} onHangup={hangupBrowserCall} />
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
     </>
   );

@@ -2,21 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { addHelper, getMyHelperProfile, updateHelper } from "../api/index";
 import { openPdfDocument } from "../utils/document";
 
-const DOCUMENT_TYPES = [
-  "Aadhaar Card",
-  "PAN Card",
-  "Voter ID",
-  "Driving Licence",
-  "Passport",
-  "Ration Card",
-];
-
+const REQUIRED_DOCUMENT_TYPE = "Aadhaar Card";
 const MAX_PDF_SIZE = 4 * 1024 * 1024;
 
-const EMPTY_DOC = (type = "") => ({
-  type,
+const EMPTY_DOC = () => ({
+  type: REQUIRED_DOCUMENT_TYPE,
   documentNumber: "",
   documentUrl: "",
+  documentPassword: "",
   fileName: "",
   mimeType: "application/pdf",
 });
@@ -35,17 +28,14 @@ const initialForm = {
   emergencyContactName: "",
   emergencyContactPhone: "",
   livePhoto: "",
-  verificationDocuments: [
-    EMPTY_DOC("Aadhaar Card"),
-    EMPTY_DOC("PAN Card"),
-    EMPTY_DOC("Voter ID"),
-  ],
+  verificationDocuments: [EMPTY_DOC()],
 };
 
 const normalizeDoc = (doc = {}) => ({
-  type: doc.type || "",
+  type: REQUIRED_DOCUMENT_TYPE,
   documentNumber: doc.documentNumber || "",
   documentUrl: doc.documentUrl || "",
+  documentPassword: doc.documentPassword || "",
   fileName: doc.fileName || "",
   mimeType: doc.mimeType || "application/pdf",
 });
@@ -65,9 +55,9 @@ const mapProfileToForm = (profile) => ({
   emergencyContactPhone: profile.emergencyContactPhone || "",
   livePhoto: profile.livePhoto || "",
   verificationDocuments:
-    profile.verificationDocuments?.length >= 3
-      ? profile.verificationDocuments.map(normalizeDoc)
-      : initialForm.verificationDocuments,
+    profile.verificationDocuments?.length
+      ? [normalizeDoc(profile.verificationDocuments[0])]
+      : [EMPTY_DOC()],
 });
 
 const shellCard = {
@@ -103,6 +93,11 @@ const RegisterPage = ({ user, setPage }) => {
   const [error, setError] = useState("");
 
   const isEligible = user && ["helper", "admin"].includes(user.role);
+  const aadhaarDocument = form.verificationDocuments[0] || EMPTY_DOC();
+  const hasAadhaarReady =
+    aadhaarDocument.documentNumber.trim() &&
+    aadhaarDocument.documentUrl.trim() &&
+    aadhaarDocument.documentPassword.trim();
 
   useEffect(() => {
     if (!isEligible) return;
@@ -130,20 +125,10 @@ const RegisterPage = ({ user, setPage }) => {
     };
   }, [isEligible]);
 
-  const completedDocs = useMemo(
-    () =>
-      form.verificationDocuments.filter(
-        (doc) => doc.type && doc.documentNumber.trim() && doc.documentUrl.trim()
-      ).length,
-    [form.verificationDocuments]
-  );
-
-  const updateDoc = (index, field, value) => {
+  const updateDoc = (field, value) => {
     setForm((current) => ({
       ...current,
-      verificationDocuments: current.verificationDocuments.map((doc, docIndex) =>
-        docIndex === index ? { ...doc, [field]: value } : doc
-      ),
+      verificationDocuments: [{ ...current.verificationDocuments[0], [field]: value }],
     }));
   };
 
@@ -170,27 +155,27 @@ const RegisterPage = ({ user, setPage }) => {
     reader.readAsDataURL(file);
   };
 
-  const handleDocumentUpload = (index, event) => {
+  const handleDocumentUpload = (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     if (file.type !== "application/pdf") {
-      setError("Please upload verification documents only as PDF files.");
+      setError("Please upload the Aadhaar document only as a PDF file.");
       event.target.value = "";
       return;
     }
 
     if (file.size > MAX_PDF_SIZE) {
-      setError("Each PDF must be 4 MB or smaller for upload.");
+      setError("The Aadhaar PDF must be 4 MB or smaller for upload.");
       event.target.value = "";
       return;
     }
 
     const reader = new FileReader();
     reader.onload = () => {
-      updateDoc(index, "documentUrl", typeof reader.result === "string" ? reader.result : "");
-      updateDoc(index, "fileName", file.name);
-      updateDoc(index, "mimeType", file.type || "application/pdf");
+      updateDoc("documentUrl", typeof reader.result === "string" ? reader.result : "");
+      updateDoc("fileName", file.name);
+      updateDoc("mimeType", file.type || "application/pdf");
       setError("");
     };
     reader.onerror = () => {
@@ -214,6 +199,8 @@ const RegisterPage = ({ user, setPage }) => {
       form.currentAddress,
       form.emergencyContactName,
       form.emergencyContactPhone,
+      aadhaarDocument.documentNumber,
+      aadhaarDocument.documentPassword,
     ];
 
     if (requiredFields.some((value) => !String(value).trim())) {
@@ -222,21 +209,12 @@ const RegisterPage = ({ user, setPage }) => {
     }
 
     if (!form.livePhoto.trim()) {
-      setError("Please upload a live photo of the helper.");
+      setError("Please upload a current live photo of the helper.");
       return;
     }
 
-    if (completedDocs < 3) {
-      setError("Please upload Aadhaar plus at least two more PDF documents.");
-      return;
-    }
-
-    const hasAadhaar = form.verificationDocuments.some(
-      (doc) => doc.type === "Aadhaar Card" && doc.documentNumber.trim() && doc.documentUrl.trim()
-    );
-
-    if (!hasAadhaar) {
-      setError("Aadhaar Card is required for helper verification.");
+    if (!hasAadhaarReady) {
+      setError("Please upload the Aadhaar PDF and enter its password before submitting.");
       return;
     }
 
@@ -247,9 +225,12 @@ const RegisterPage = ({ user, setPage }) => {
       avatar: form.name.slice(0, 2).toUpperCase(),
       gradient: "linear-gradient(135deg,#102A43,#1B9C85)",
       experience: existingProfile?.experience || "New",
-      verificationDocuments: form.verificationDocuments.filter(
-        (doc) => doc.type && doc.documentNumber.trim() && doc.documentUrl.trim()
-      ),
+      verificationDocuments: [
+        {
+          ...aadhaarDocument,
+          type: REQUIRED_DOCUMENT_TYPE,
+        },
+      ],
     };
 
     setLoading(true);
@@ -268,6 +249,18 @@ const RegisterPage = ({ user, setPage }) => {
     }
   };
 
+  const reviewChecklist = useMemo(
+    () => [
+      ["Account logged in", !!user],
+      ["Current live photo uploaded", !!form.livePhoto],
+      ["Aadhaar number added", !!aadhaarDocument.documentNumber.trim()],
+      ["Aadhaar PDF uploaded", !!aadhaarDocument.documentUrl.trim()],
+      ["Aadhaar password added", !!aadhaarDocument.documentPassword.trim()],
+      ["Address and contacts filled", !!form.currentAddress && !!form.emergencyContactName && !!form.emergencyContactPhone],
+    ],
+    [aadhaarDocument.documentNumber, aadhaarDocument.documentPassword, aadhaarDocument.documentUrl, form.currentAddress, form.emergencyContactName, form.emergencyContactPhone, form.livePhoto, user]
+  );
+
   if (!isEligible) {
     return (
       <div className="page-content" style={{ paddingTop: 88, minHeight: "100vh" }}>
@@ -278,7 +271,7 @@ const RegisterPage = ({ user, setPage }) => {
               Helper verification starts after helper sign in
             </h1>
             <p style={{ color: "var(--text2)", lineHeight: 1.8, fontSize: 16, maxWidth: 760, marginBottom: 22 }}>
-              Please create or login with a helper account first. Every helper profile is now linked to an account so the admin can review documents, approve the listing, and keep the marketplace secure.
+              Please create or login with a helper account first. Every helper profile is linked to a real account so the admin can review Aadhaar, its password, verify the live photo, and approve the listing before it appears in Browse Helpers.
             </p>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               <button className="btn-primary" onClick={() => setPage("signup")}>Create helper account</button>
@@ -299,7 +292,7 @@ const RegisterPage = ({ user, setPage }) => {
             {existingProfile ? "Profile re-submitted" : "Verification submitted"}
           </h2>
           <p style={{ color: "var(--text2)", fontSize: 16, lineHeight: 1.8, maxWidth: 500, margin: "0 auto 24px" }}>
-            Your helper profile is now waiting for admin approval. It stays hidden from families until the documents and live photo are reviewed.
+            Your helper profile is now waiting for admin approval. It stays hidden from families until the Aadhaar document, password, and live photo are reviewed.
           </p>
           <div style={{ ...sectionCard, textAlign: "left" }}>
             <div style={{ color: "var(--text3)", fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Submitted details</div>
@@ -308,7 +301,8 @@ const RegisterPage = ({ user, setPage }) => {
               {form.service} in {form.city} at Rs.{form.price}/month
             </div>
             <div style={{ marginTop: 12, display: "grid", gap: 8, color: "var(--text2)", fontSize: 14 }}>
-              <div>Documents ready: {completedDocs}</div>
+              <div>Aadhaar: {aadhaarDocument.documentUrl ? "Uploaded" : "Missing"}</div>
+              <div>Aadhaar password: {aadhaarDocument.documentPassword ? "Added" : "Missing"}</div>
               <div>Live photo: {form.livePhoto ? "Uploaded" : "Missing"}</div>
             </div>
           </div>
@@ -325,12 +319,12 @@ const RegisterPage = ({ user, setPage }) => {
       <div style={{ maxWidth: 1120, margin: "0 auto", padding: "26px 24px 70px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 0.9fr) minmax(280px, 0.52fr)", gap: 18, alignItems: "start" }}>
           <div style={{ ...shellCard, padding: 30 }}>
-            <div className="tag tag-purple" style={{ marginBottom: 16 }}>Modern India Minimal</div>
+            <div className="tag tag-purple" style={{ marginBottom: 16 }}>Verified helper onboarding</div>
             <h1 style={{ fontSize: "clamp(34px, 5vw, 56px)", lineHeight: 1.02, marginBottom: 14 }}>
-              {existingProfile ? "Update your verified helper profile" : "Register as a verified helper"}
+              {existingProfile ? "Update your helper profile" : "Register as a verified helper"}
             </h1>
             <p style={{ color: "var(--text2)", lineHeight: 1.8, fontSize: 16, maxWidth: 680 }}>
-              Submit your profile, Aadhaar, live photo, and additional PDF identity documents. Admin approval is required before your profile appears to families.
+              Submit your profile, current photo, and password-protected Aadhaar PDF. Admin approval is required before your profile appears to families on the public browse page.
             </p>
 
             {profileLoading && <p style={{ color: "var(--text2)", marginTop: 14 }}>Loading your current helper profile...</p>}
@@ -341,34 +335,12 @@ const RegisterPage = ({ user, setPage }) => {
                   Basic details
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
-                  <div>
-                    <label style={labelStyle}>Full name *</label>
-                    <input className="input-field" placeholder="Sunita Devi" value={form.name} onChange={(e) => setForm((current) => ({ ...current, name: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Phone number *</label>
-                    <input className="input-field" placeholder="9876543210" value={form.phone} onChange={(e) => setForm((current) => ({ ...current, phone: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Service type *</label>
-                    <select className="input-field" value={form.service} onChange={(e) => setForm((current) => ({ ...current, service: e.target.value }))}>
-                      {["Maid", "Cook", "Cleaner", "Cook+Maid"].map((service) => <option key={service}>{service}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Monthly price (Rs.) *</label>
-                    <input className="input-field" type="number" placeholder="3500" value={form.price} onChange={(e) => setForm((current) => ({ ...current, price: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>City *</label>
-                    <select className="input-field" value={form.city} onChange={(e) => setForm((current) => ({ ...current, city: e.target.value }))}>
-                      {["Indore", "Bhopal", "Delhi", "Mumbai", "Pune", "Hyderabad"].map((city) => <option key={city}>{city}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Area / locality *</label>
-                    <input className="input-field" placeholder="e.g. Vijay Nagar" value={form.area} onChange={(e) => setForm((current) => ({ ...current, area: e.target.value }))} />
-                  </div>
+                  <div><label style={labelStyle}>Full name *</label><input className="input-field" placeholder="Sunita Devi" value={form.name} onChange={(e) => setForm((current) => ({ ...current, name: e.target.value }))} /></div>
+                  <div><label style={labelStyle}>Phone number *</label><input className="input-field" placeholder="9876543210" value={form.phone} onChange={(e) => setForm((current) => ({ ...current, phone: e.target.value }))} /></div>
+                  <div><label style={labelStyle}>Service type *</label><select className="input-field" value={form.service} onChange={(e) => setForm((current) => ({ ...current, service: e.target.value }))}>{["Maid", "Cook", "Cleaner", "Cook+Maid"].map((service) => <option key={service}>{service}</option>)}</select></div>
+                  <div><label style={labelStyle}>Monthly price (Rs.) *</label><input className="input-field" type="number" placeholder="3500" value={form.price} onChange={(e) => setForm((current) => ({ ...current, price: e.target.value }))} /></div>
+                  <div><label style={labelStyle}>City *</label><select className="input-field" value={form.city} onChange={(e) => setForm((current) => ({ ...current, city: e.target.value }))}>{["Indore", "Bhopal", "Delhi", "Mumbai", "Pune", "Hyderabad"].map((city) => <option key={city}>{city}</option>)}</select></div>
+                  <div><label style={labelStyle}>Area / locality *</label><input className="input-field" placeholder="e.g. Vijay Nagar" value={form.area} onChange={(e) => setForm((current) => ({ ...current, area: e.target.value }))} /></div>
                 </div>
               </div>
 
@@ -377,52 +349,22 @@ const RegisterPage = ({ user, setPage }) => {
                   Personal verification
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
-                  <div>
-                    <label style={labelStyle}>Date of birth *</label>
-                    <input className="input-field" type="date" value={form.dateOfBirth} onChange={(e) => setForm((current) => ({ ...current, dateOfBirth: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Availability</label>
-                    <select className="input-field" value={form.availability} onChange={(e) => setForm((current) => ({ ...current, availability: e.target.value }))}>
-                      {["Morning (6-10 AM)", "Afternoon (1-4 PM)", "Evening (6-9 PM)", "Full Day"].map((slot) => <option key={slot}>{slot}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Emergency contact name *</label>
-                    <input className="input-field" placeholder="Ramesh Devi" value={form.emergencyContactName} onChange={(e) => setForm((current) => ({ ...current, emergencyContactName: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Emergency contact number *</label>
-                    <input className="input-field" placeholder="9898989898" value={form.emergencyContactPhone} onChange={(e) => setForm((current) => ({ ...current, emergencyContactPhone: e.target.value }))} />
-                  </div>
+                  <div><label style={labelStyle}>Date of birth *</label><input className="input-field" type="date" value={form.dateOfBirth} onChange={(e) => setForm((current) => ({ ...current, dateOfBirth: e.target.value }))} /></div>
+                  <div><label style={labelStyle}>Availability</label><select className="input-field" value={form.availability} onChange={(e) => setForm((current) => ({ ...current, availability: e.target.value }))}>{["Morning (6-10 AM)", "Afternoon (1-4 PM)", "Evening (6-9 PM)", "Full Day"].map((slot) => <option key={slot}>{slot}</option>)}</select></div>
+                  <div><label style={labelStyle}>Emergency contact name *</label><input className="input-field" placeholder="Ramesh Devi" value={form.emergencyContactName} onChange={(e) => setForm((current) => ({ ...current, emergencyContactName: e.target.value }))} /></div>
+                  <div><label style={labelStyle}>Emergency contact number *</label><input className="input-field" placeholder="9898989898" value={form.emergencyContactPhone} onChange={(e) => setForm((current) => ({ ...current, emergencyContactPhone: e.target.value }))} /></div>
                 </div>
-                <div style={{ marginTop: 16 }}>
-                  <label style={labelStyle}>Current address *</label>
-                  <textarea className="input-field" rows={3} placeholder="House number, street, locality, landmark" value={form.currentAddress} onChange={(e) => setForm((current) => ({ ...current, currentAddress: e.target.value }))} style={{ resize: "vertical", minHeight: 92 }} />
-                </div>
-                <div style={{ marginTop: 16 }}>
-                  <label style={labelStyle}>About yourself</label>
-                  <textarea className="input-field" rows={4} placeholder="Tell families about your experience and the kind of work you do." value={form.about} onChange={(e) => setForm((current) => ({ ...current, about: e.target.value }))} style={{ resize: "vertical", minHeight: 106 }} />
-                </div>
+                <div style={{ marginTop: 16 }}><label style={labelStyle}>Current address *</label><textarea className="input-field" rows={3} placeholder="House number, street, locality, landmark" value={form.currentAddress} onChange={(e) => setForm((current) => ({ ...current, currentAddress: e.target.value }))} style={{ resize: "vertical", minHeight: 92 }} /></div>
+                <div style={{ marginTop: 16 }}><label style={labelStyle}>About yourself</label><textarea className="input-field" rows={4} placeholder="Tell families about your experience and the kind of work you do." value={form.about} onChange={(e) => setForm((current) => ({ ...current, about: e.target.value }))} style={{ resize: "vertical", minHeight: 106 }} /></div>
               </div>
 
               <div style={sectionCard}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 18, flexWrap: "wrap", marginBottom: 14 }}>
                   <div>
-                    <div style={{ color: "var(--text3)", fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>
-                      Live helper photo
-                    </div>
-                    <p style={{ color: "var(--text2)", fontSize: 14, lineHeight: 1.7, maxWidth: 520 }}>
-                      Upload a clear real-time photo. This image will be shown on the approved helper profile card after admin approval.
-                    </p>
+                    <div style={{ color: "var(--text3)", fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>Current helper photo</div>
+                    <p style={{ color: "var(--text2)", fontSize: 14, lineHeight: 1.7, maxWidth: 520 }}>Upload a clear, current photo. This image will be shown on the approved helper profile card after admin approval.</p>
                   </div>
-                  {form.livePhoto && (
-                    <img
-                      src={form.livePhoto}
-                      alt="Live helper preview"
-                      style={{ width: 128, height: 128, objectFit: "cover", borderRadius: 24, border: "1px solid rgba(74,101,114,0.18)", boxShadow: "0 14px 26px rgba(61,37,23,0.10)" }}
-                    />
-                  )}
+                  {form.livePhoto && <img src={form.livePhoto} alt="Live helper preview" style={{ width: 128, height: 128, objectFit: "cover", borderRadius: 24, border: "1px solid rgba(74,101,114,0.18)", boxShadow: "0 14px 26px rgba(61,37,23,0.10)" }} />}
                 </div>
                 <label style={labelStyle}>Upload photo *</label>
                 <input className="input-field" type="file" accept="image/*" onChange={handleLivePhotoChange} style={{ padding: 12 }} />
@@ -431,103 +373,41 @@ const RegisterPage = ({ user, setPage }) => {
               <div style={sectionCard}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 18, flexWrap: "wrap", marginBottom: 14 }}>
                   <div>
-                    <div style={{ color: "var(--text3)", fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>
-                      Verification documents
-                    </div>
-                    <p style={{ color: "var(--text2)", fontSize: 14, lineHeight: 1.7, maxWidth: 620 }}>
-                      Aadhaar is mandatory. Upload at least two more government-issued identity documents directly as PDF files.
-                    </p>
+                    <div style={{ color: "var(--text3)", fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>Aadhaar verification</div>
+                    <p style={{ color: "var(--text2)", fontSize: 14, lineHeight: 1.7, maxWidth: 620 }}>Upload one password-protected Aadhaar Card PDF, enter the Aadhaar number, and add the PDF password for admin review.</p>
                   </div>
-                  <div className="tag tag-blue" style={{ alignSelf: "flex-start", fontSize: 12 }}>
-                    {completedDocs}/3 ready
-                  </div>
+                  <div className="tag tag-blue" style={{ alignSelf: "flex-start", fontSize: 12 }}>{hasAadhaarReady ? "Aadhaar ready" : "Aadhaar pending"}</div>
                 </div>
 
-                <div style={{ display: "grid", gap: 14 }}>
-                  {form.verificationDocuments.map((doc, index) => (
-                    <div key={`${doc.type}-${index}`} style={{ borderRadius: 20, border: "1px solid rgba(74,101,114,0.16)", background: "rgba(255,255,255,0.92)", padding: 18 }}>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 14 }}>
-                        <div>
-                          <label style={labelStyle}>Document type *</label>
-                          <select className="input-field" value={doc.type} onChange={(e) => updateDoc(index, "type", e.target.value)}>
-                            <option value="">Select document</option>
-                            {DOCUMENT_TYPES.map((type) => <option key={type}>{type}</option>)}
-                          </select>
-                        </div>
-                        <div>
-                          <label style={labelStyle}>Document number *</label>
-                          <input className="input-field" placeholder="Enter number" value={doc.documentNumber} onChange={(e) => updateDoc(index, "documentNumber", e.target.value)} />
-                        </div>
-                        <div>
-                          <label style={labelStyle}>Upload PDF *</label>
-                          <input className="input-field" type="file" accept="application/pdf" onChange={(e) => handleDocumentUpload(index, e)} style={{ padding: 12 }} />
-                        </div>
-                      </div>
-                      <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-                        <div style={{ color: doc.documentUrl ? "var(--green)" : "var(--text3)", fontSize: 13, fontWeight: 700 }}>
-                          {doc.documentUrl ? `PDF ready: ${doc.fileName || "Uploaded document"}` : "No PDF selected yet"}
-                        </div>
-                        {doc.documentUrl && (
-                          <button
-                            type="button"
-                            onClick={() => openPdfDocument(doc.documentUrl, doc.fileName || `${doc.type}.pdf`)}
-                            style={{
-                              background: "none",
-                              border: "none",
-                              padding: 0,
-                              color: "var(--brand-dark)",
-                              fontWeight: 800,
-                              fontSize: 13,
-                              cursor: "pointer",
-                            }}
-                          >
-                            Open uploaded PDF
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                <div style={{ borderRadius: 20, border: "1px solid rgba(74,101,114,0.16)", background: "rgba(255,255,255,0.92)", padding: 18 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 14 }}>
+                    <div><label style={labelStyle}>Document type *</label><input className="input-field" value={REQUIRED_DOCUMENT_TYPE} readOnly /></div>
+                    <div><label style={labelStyle}>Aadhaar number *</label><input className="input-field" placeholder="Enter number" value={aadhaarDocument.documentNumber} onChange={(e) => updateDoc("documentNumber", e.target.value)} /></div>
+                    <div><label style={labelStyle}>Aadhaar PDF password *</label><input className="input-field" type="text" placeholder="Enter PDF password" value={aadhaarDocument.documentPassword} onChange={(e) => updateDoc("documentPassword", e.target.value)} /></div>
+                    <div><label style={labelStyle}>Upload PDF *</label><input className="input-field" type="file" accept="application/pdf" onChange={handleDocumentUpload} style={{ padding: 12 }} /></div>
+                  </div>
+                  <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                    <div style={{ color: aadhaarDocument.documentUrl ? "var(--green)" : "var(--text3)", fontSize: 13, fontWeight: 700 }}>{aadhaarDocument.documentUrl ? `PDF ready: ${aadhaarDocument.fileName || "Uploaded Aadhaar"}` : "No Aadhaar PDF selected yet"}</div>
+                    {aadhaarDocument.documentUrl && <button type="button" onClick={() => openPdfDocument(aadhaarDocument.documentUrl, aadhaarDocument.fileName || "aadhaar.pdf")} style={{ background: "none", border: "none", padding: 0, color: "var(--brand-dark)", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>Open uploaded PDF</button>}
+                  </div>
                 </div>
               </div>
 
-              {error && (
-                <div style={{ background: "rgba(248,231,228,0.92)", border: "1px solid rgba(182,84,69,0.18)", color: "var(--red)", borderRadius: 18, padding: "13px 16px", fontSize: 14 }}>
-                  {error}
-                </div>
-              )}
+              {error && <div style={{ background: "rgba(248,231,228,0.92)", border: "1px solid rgba(182,84,69,0.18)", color: "var(--red)", borderRadius: 18, padding: "13px 16px", fontSize: 14 }}>{error}</div>}
 
-              <button className="btn-primary" style={{ width: "100%", padding: "15px", fontSize: 16 }} onClick={handle} disabled={loading || profileLoading}>
-                {loading ? "Submitting for review..." : existingProfile ? "Resubmit profile for approval" : "Submit helper profile for approval"}
-              </button>
+              <button className="btn-primary" style={{ width: "100%", padding: "15px", fontSize: 16 }} onClick={handle} disabled={loading || profileLoading}>{loading ? "Submitting for review..." : existingProfile ? "Resubmit profile for approval" : "Submit helper profile for approval"}</button>
             </div>
           </div>
 
           <div style={{ display: "grid", gap: 18 }}>
             <div style={{ ...sectionCard, position: "sticky", top: 98 }}>
-              <div style={{ color: "var(--text3)", fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>
-                Review checklist
-              </div>
+              <div style={{ color: "var(--text3)", fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>Review checklist</div>
               <div style={{ display: "grid", gap: 12 }}>
-                {[
-                  ["Account logged in", !!user],
-                  ["Live helper photo uploaded", !!form.livePhoto],
-                  ["Aadhaar PDF uploaded", form.verificationDocuments.some((doc) => doc.type === "Aadhaar Card" && doc.documentNumber.trim() && doc.documentUrl.trim())],
-                  ["Three PDF documents ready", completedDocs >= 3],
-                  ["Address and contacts filled", !!form.currentAddress && !!form.emergencyContactName && !!form.emergencyContactPhone],
-                ].map(([label, done]) => (
-                  <div key={label} style={{ display: "flex", justifyContent: "space-between", gap: 10, paddingBottom: 10, borderBottom: "1px solid rgba(221,206,185,0.64)" }}>
-                    <span style={{ color: "var(--text)", fontSize: 14 }}>{label}</span>
-                    <span className={done ? "tag tag-green" : "tag tag-orange"} style={{ fontSize: 10 }}>
-                      {done ? "Ready" : "Pending"}
-                    </span>
-                  </div>
-                ))}
+                {reviewChecklist.map(([label, done]) => <div key={label} style={{ display: "flex", justifyContent: "space-between", gap: 10, paddingBottom: 10, borderBottom: "1px solid rgba(221,206,185,0.64)" }}><span style={{ color: "var(--text)", fontSize: 14 }}>{label}</span><span className={done ? "tag tag-green" : "tag tag-orange"} style={{ fontSize: 10 }}>{done ? "Ready" : "Pending"}</span></div>)}
               </div>
               <div style={{ marginTop: 18, padding: "16px 16px", borderRadius: 18, background: "var(--surface-soft)", border: "1px solid rgba(201,178,149,0.64)" }}>
                 <div style={{ fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>What admin checks</div>
-                <p style={{ color: "var(--text2)", fontSize: 14, lineHeight: 1.7 }}>
-                  The admin reviews your uploaded PDF documents, live photo, address details, and service information before your card goes live for families.
-                </p>
+                <p style={{ color: "var(--text2)", fontSize: 14, lineHeight: 1.7 }}>The admin reviews your Aadhaar PDF, Aadhaar PDF password, live photo, address details, and service information before your card goes live for families.</p>
               </div>
             </div>
           </div>

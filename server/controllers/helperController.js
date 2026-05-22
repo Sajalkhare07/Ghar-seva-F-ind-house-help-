@@ -8,14 +8,7 @@ const ALLOWED_AVAILABILITY = [
   "Evening (6-9 PM)",
   "Full Day",
 ];
-const ALLOWED_DOCUMENT_TYPES = [
-  "Aadhaar Card",
-  "PAN Card",
-  "Voter ID",
-  "Driving Licence",
-  "Passport",
-  "Ration Card",
-];
+const REQUIRED_DOCUMENT_TYPE = "Aadhaar Card";
 
 const approvedBrowseFilter = {
   $or: [
@@ -39,12 +32,14 @@ const sanitizeDocuments = (docs) => {
         typeof doc?.documentNumber === "string" ? doc.documentNumber.trim() : "",
       documentUrl:
         typeof doc?.documentUrl === "string" ? doc.documentUrl.trim() : "",
+      documentPassword:
+        typeof doc?.documentPassword === "string" ? doc.documentPassword.trim() : "",
       fileName: typeof doc?.fileName === "string" ? doc.fileName.trim() : "",
       mimeType: typeof doc?.mimeType === "string" ? doc.mimeType.trim() : "application/pdf",
     }))
     .filter(
       (doc) =>
-        doc.type || doc.documentNumber || doc.documentUrl || doc.fileName || doc.mimeType
+        doc.type || doc.documentNumber || doc.documentUrl || doc.documentPassword || doc.fileName || doc.mimeType
     );
 };
 
@@ -102,33 +97,55 @@ const sanitizeHelperPayload = (body = {}) => {
 
 const validatePhone = (value) => /^\d{10,15}$/.test(String(value || "").replace(/\s+/g, ""));
 
+const sanitizePublicHelper = (helperDoc) => {
+  const helper = helperDoc.toObject ? helperDoc.toObject() : helperDoc;
+  return {
+    _id: helper._id,
+    id: helper._id,
+    name: helper.name,
+    service: helper.service,
+    price: helper.price,
+    city: helper.city,
+    area: helper.area,
+    availability: helper.availability,
+    about: helper.about,
+    skills: helper.skills || [],
+    experience: helper.experience,
+    avatar: helper.avatar,
+    livePhoto: helper.livePhoto,
+    gradient: helper.gradient,
+    rating: helper.rating,
+    reviews: helper.reviews,
+    available: helper.available,
+    verified: helper.verified,
+    verificationStatus: helper.verificationStatus,
+    maskedContact: {
+      voice: "Call",
+      chat: "Chat",
+    },
+  };
+};
+
 const validateDocuments = (documents) => {
-  if (!Array.isArray(documents) || documents.length < 3) {
-    return "Upload at least three PDF documents for verification";
+  if (!Array.isArray(documents) || documents.length !== 1) {
+    return "Upload only one Aadhaar Card PDF for verification";
   }
 
-  const seenTypes = new Set();
-  for (const doc of documents) {
-    if (!ALLOWED_DOCUMENT_TYPES.includes(doc.type)) {
-      return "Invalid document type selected";
-    }
-    if (!doc.documentNumber || !doc.documentUrl) {
-      return "Each document needs a number and PDF upload";
-    }
-    if (!isValidPdfUpload(doc.documentUrl)) {
-      return "Each verification document must be uploaded as a PDF";
-    }
-    if (doc.mimeType && doc.mimeType !== "application/pdf") {
-      return "Only PDF documents are allowed for verification";
-    }
-    if (seenTypes.has(doc.type)) {
-      return "Please avoid uploading the same document type twice";
-    }
-    seenTypes.add(doc.type);
-  }
-
-  if (!seenTypes.has("Aadhaar Card")) {
+  const [doc] = documents;
+  if (doc.type !== REQUIRED_DOCUMENT_TYPE) {
     return "Aadhaar Card is required for helper verification";
+  }
+  if (!doc.documentNumber || !doc.documentUrl) {
+    return "Aadhaar needs a document number and PDF upload";
+  }
+  if (!doc.documentPassword) {
+    return "Please enter the password for the Aadhaar PDF";
+  }
+  if (!isValidPdfUpload(doc.documentUrl)) {
+    return "Aadhaar must be uploaded as a PDF";
+  }
+  if (doc.mimeType && doc.mimeType !== "application/pdf") {
+    return "Only PDF documents are allowed for verification";
   }
 
   return null;
@@ -235,7 +252,7 @@ const getHelpers = async (req, res) => {
     res.status(200).json({
       success: true,
       count: helpers.length,
-      data: helpers,
+      data: helpers.map(sanitizePublicHelper),
     });
   } catch (err) {
     console.error("getHelpers error:", err.message);
@@ -280,7 +297,7 @@ const getHelper = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: helper,
+      data: sanitizePublicHelper(helper),
     });
   } catch (err) {
     console.error("getHelper error:", err.message);
@@ -401,5 +418,5 @@ module.exports = {
   addHelper,
   updateHelper,
   deleteHelper,
-  ALLOWED_DOCUMENT_TYPES,
+  REQUIRED_DOCUMENT_TYPE,
 };
