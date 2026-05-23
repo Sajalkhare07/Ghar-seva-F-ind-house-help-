@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import Toast from "./components/Toast";
 import ProfileModal from "./components/ProfileModal";
 import CallPanel from "./components/CallPanel";
+import PostCallDecisionModal from "./components/PostCallDecisionModal";
 
 import HomePage from "./pages/HomePage";
 import BrowsePage from "./pages/BrowsePage";
@@ -30,6 +31,7 @@ const App = () => {
   const [savedIds, setSavedIds] = useState([]);
   const [toast, setToast] = useState(null);
   const [callState, setCallState] = useState(null);
+  const [postCallHelper, setPostCallHelper] = useState(null);
 
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
@@ -76,6 +78,10 @@ const App = () => {
         setToast({ msg: nextState.message, type: "error" });
       }
 
+      if (nextState?.status === "ended" && nextState.helperId && user?.role === "user") {
+        setPostCallHelper({ helperId: nextState.helperId, helperName: nextState.helperName });
+      }
+
       if (["ended", "cancelled", "rejected"].includes(nextState?.status)) {
         window.setTimeout(() => {
           setCallState((current) =>
@@ -86,7 +92,7 @@ const App = () => {
     });
 
     return unsubscribe;
-  }, []);
+  }, [user]);
 
   const showToast = (msg, type = "success") => setToast({ msg, type });
 
@@ -189,9 +195,19 @@ const App = () => {
         />
       )}
       <CallPanel callState={callState} onHangup={hangupBrowserCall} />
+      {postCallHelper && (
+        <PostCallDecisionModal
+          helper={postCallHelper}
+          onClose={() => setPostCallHelper(null)}
+          onDone={() => setPage("dashboard")}
+          showToast={showToast}
+        />
+      )}
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
     </>
   );
 };
 
 export default App;
+
+

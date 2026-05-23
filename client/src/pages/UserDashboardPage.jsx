@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import Avatar from "../components/Avatar";
 import HelperCard from "../components/HelperCard";
+import HiringDashboardSections from "../components/HiringDashboardSections";
 import {
   addBookingAttendance,
   addBookingPayment,
   addBookingWeeklyReview,
+  getHiringDashboard,
   getMyBookings,
   getSavedHelpers,
   requestBookingCall,
@@ -74,6 +76,8 @@ const UserDashboardPage = ({ user, savedIds, onView, onSave, setPage, showToast 
   const [attendanceForms, setAttendanceForms] = useState({});
   const [paymentForms, setPaymentForms] = useState({});
   const [reviewForms, setReviewForms] = useState({});
+  const [hiringDashboard, setHiringDashboard] = useState({ pendingDecisions: [], trials: [], employments: [] });
+  const [hiringLoading, setHiringLoading] = useState(false);
 
   const loadSavedHelpers = async () => {
     setSavedLoading(true);
@@ -87,6 +91,18 @@ const UserDashboardPage = ({ user, savedIds, onView, onSave, setPage, showToast 
     }
   };
 
+
+  const loadHiringDashboard = async () => {
+    setHiringLoading(true);
+    try {
+      const res = await getHiringDashboard();
+      setHiringDashboard(res.data.data || { pendingDecisions: [], trials: [], employments: [] });
+    } catch {
+      setHiringDashboard({ pendingDecisions: [], trials: [], employments: [] });
+    } finally {
+      setHiringLoading(false);
+    }
+  };
   const loadBookings = async () => {
     setBookingsLoading(true);
     try {
@@ -119,8 +135,17 @@ const UserDashboardPage = ({ user, savedIds, onView, onSave, setPage, showToast 
     return { label: "In progress", title: "Watch for helper responses", text: "Your open requests are waiting for a reply. Keep the conversation going right here inside the web app.", actionLabel: "Open connections", action: () => setTab("connections") };
   }, [savedHelpers.length, bookingGroups, setPage]);
 
-  const statItems = [["Saved helpers", savedHelpers.length, "var(--brand-dark)"], ["Open connections", bookingGroups.connections.length, "var(--accent)"], ["Live services", bookingGroups.activeServices.length, "var(--text)"], ["History", bookingGroups.history.length, "var(--text2)"]];
+  const statItems = [["Saved helpers", savedHelpers.length, "var(--brand-dark)"], ["Pending decisions", hiringDashboard.pendingDecisions.length, "var(--accent)"], ["Trials", hiringDashboard.trials.length, "var(--text)"], ["Active helpers", hiringDashboard.employments.length, "var(--text2)"]];
 
+
+  const syncEmployment = (updatedEmployment) => {
+    setHiringDashboard((current) => ({
+      ...current,
+      employments: (current.employments || []).map((item) =>
+        String(item._id) === String(updatedEmployment._id) ? updatedEmployment : item
+      ),
+    }));
+  };
   const syncBooking = (updatedBooking) => setMyBookings((current) => current.map((item) => (String(item._id) === String(updatedBooking._id) ? updatedBooking : item)));
 
   const handleStatus = async (bookingId, status) => {
@@ -403,7 +428,7 @@ const UserDashboardPage = ({ user, savedIds, onView, onSave, setPage, showToast 
         </div>
 
         <div style={{ display: "inline-flex", gap: 6, padding: 6, borderRadius: 999, border: "1px solid rgba(74,101,114,0.18)", background: "rgba(255,255,255,0.85)", marginBottom: 22, flexWrap: "wrap" }}>
-          {[ ["overview", "Overview"], ["shortlist", "Shortlist"], ["connections", "Connections"], ["services", "Live services"], ["history", "History"] ].map(([value, label]) => <button key={value} type="button" onClick={() => setTab(value)} style={tabButton(tab === value)}>{label}</button>)}
+          {[ ["overview", "Overview"], ["shortlist", "Shortlist"], ["pending", "Pending Decisions"], ["trials", "Trials"], ["activeHelpers", "Active Helpers"], ["connections", "Connections"], ["services", "Live services"], ["history", "History"] ].map(([value, label]) => <button key={value} type="button" onClick={() => setTab(value)} style={tabButton(tab === value)}>{label}</button>)}
         </div>
 
         {tab === "overview" ? <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 18 }}>
@@ -414,6 +439,12 @@ const UserDashboardPage = ({ user, savedIds, onView, onSave, setPage, showToast 
 
         {tab === "shortlist" ? (savedLoading ? <div style={{ ...panelStyle, padding: 26, color: "var(--text2)" }}>Loading saved helpers...</div> : savedHelpers.length === 0 ? <EmptyState tag="Shortlist empty" title="No saved helpers yet" text="Browse helpers and save the ones that feel right for your home. Your shortlist will stay here for quick access." actionLabel="Find helpers" onAction={() => setPage("browse")} /> : <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>{savedHelpers.map((helper) => <HelperCard key={String(helper._id)} helper={{ ...helper, id: helper._id }} user={user} onView={onView} onSave={onSave} saved />)}</div>) : null}
 
+
+        {tab === "pending" ? <HiringDashboardSections mode="pending" data={hiringDashboard} loading={hiringLoading} onView={onView} onOpenConnections={() => setTab("connections")} onEmploymentUpdated={syncEmployment} showToast={showToast} /> : null}
+
+        {tab === "trials" ? <HiringDashboardSections mode="trials" data={hiringDashboard} loading={hiringLoading} onView={onView} onOpenConnections={() => setTab("connections")} onEmploymentUpdated={syncEmployment} showToast={showToast} /> : null}
+
+        {tab === "activeHelpers" ? <HiringDashboardSections mode="activeHelpers" data={hiringDashboard} loading={hiringLoading} onView={onView} onOpenConnections={() => setTab("connections")} onEmploymentUpdated={syncEmployment} showToast={showToast} /> : null}
         {tab === "connections" ? (bookingsLoading ? <div style={{ ...panelStyle, padding: 26, color: "var(--text2)" }}>Loading your connections...</div> : bookingGroups.connections.length === 0 ? <EmptyState tag="No open connections" title="Start a private conversation with a helper" text="Once you contact a helper, accepted and pending connections will appear here with in-app chat and call request controls." actionLabel="Browse helpers" onAction={() => setPage("browse")} /> : <div style={{ display: "grid", gap: 14 }}>{bookingGroups.connections.map((booking) => renderConnectionCard(booking))}</div>) : null}
 
         {tab === "services" ? (bookingsLoading ? <div style={{ ...panelStyle, padding: 26, color: "var(--text2)" }}>Loading live services...</div> : bookingGroups.activeServices.length === 0 ? <EmptyState tag="No live services" title="Service tracking begins when the helper starts" text="After a helper accepts, use the connection card to start the service tracker. That unlocks attendance, payment, and weekly quality tracking." actionLabel="Open connections" onAction={() => setTab("connections")} /> : <div style={{ display: "grid", gap: 14 }}>{bookingGroups.activeServices.map((booking) => renderConnectionCard(booking, true))}</div>) : null}
@@ -425,4 +456,5 @@ const UserDashboardPage = ({ user, savedIds, onView, onSave, setPage, showToast 
 };
 
 export default UserDashboardPage;
+
 

@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const helmet = require("helmet");
@@ -69,6 +69,7 @@ app.use("/api/bookings", require("./routes/bookingRoutes"));
 app.use("/api/ratings", require("./routes/ratingRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
 app.use("/api/calls", require("./routes/callRoutes"));
+app.use("/api/hiring", require("./routes/hiringRoutes"));
 
 app.get("/", (req, res) => {
   res.json({ message: "GharSeva API is running", status: "ok" });
@@ -103,3 +104,5 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`GharSeva server running on http://localhost:${PORT}`);
 });
+
+

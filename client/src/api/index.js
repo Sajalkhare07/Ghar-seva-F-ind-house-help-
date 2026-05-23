@@ -1,4 +1,4 @@
-import axios from "axios";
+﻿import axios from "axios";
 
 const baseURL =
   import.meta.env.VITE_API_BASE_URL ||
@@ -49,6 +49,19 @@ export const addBookingWeeklyReview = (id, data) =>
 
 export const getCallToken = () => API.get("/calls/token");
 
+export const getHiringDashboard = () => API.get("/hiring/dashboard");
+export const savePendingHiringDecision = (data) => API.post("/hiring/pending", data);
+export const scheduleHelperTrial = (data) => API.post("/hiring/trials", data);
+export const hireHelperAfterCall = (data) => API.post("/hiring/employments", data);
+export const addEmploymentAttendance = (id, data) =>
+  API.post(`/hiring/employments/${id}/attendance`, data);
+export const updateEmploymentSalary = (id, data) =>
+  API.patch(`/hiring/employments/${id}/salary`, data);
+export const addEmploymentWeeklyReview = (id, data) =>
+  API.post(`/hiring/employments/${id}/weekly-reviews`, data);
+export const updateEmploymentNotes = (id, privateNotes) =>
+  API.patch(`/hiring/employments/${id}/notes`, { privateNotes });
+
 export const submitRating = (helperId, rating, review) =>
   API.post("/ratings", { helperId, rating, review });
 export const getHelperRatings = (helperId) => API.get(`/ratings/${helperId}`);
@@ -59,3 +72,4 @@ export const reviewHelperProfile = (helperId, payload) =>
   API.patch(`/admin/helpers/${helperId}/review`, payload);
 
 export default API;
+
